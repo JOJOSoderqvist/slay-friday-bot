@@ -1,0 +1,11 @@
+services:
+  slayfridaybot:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    image: slayfridaybot:latest
+    env_file:
+      - .env
+    environment:
+      - RUST_LOG=info
+    restart: unless-stopped
