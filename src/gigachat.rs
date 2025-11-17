@@ -18,7 +18,7 @@ pub struct GigaChatApi {
 impl GigaChatApi {
     pub fn new(client_id: String, client_secret: String) -> Self {
         let cert_pem = fs::read("cert.crt")
-            .expect("Failed to read the certificate file. Make sure 'russian_trusted_root_ca.pem' is in the project root.");
+            .expect("Failed to read the certificate file.");
 
         let cert = Certificate::from_pem(&cert_pem)
             .expect("Failed to create a certificate from the PEM file.");
