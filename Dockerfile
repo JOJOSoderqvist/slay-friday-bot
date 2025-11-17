@@ -24,6 +24,8 @@ RUN update-ca-certificates
 
 WORKDIR /app
 
+COPY cert.crt /app/cert.crt
+
 # Copy the compiled executable from the builder stage
 COPY --from=builder /app/target/release/slayFridayBot .
 
