@@ -3,12 +3,18 @@ mod commands;
 mod handlers;
 mod scheduler;
 mod utils;
+mod gigachat;
+mod errors;
+mod dto;
+mod constants;
 
+use std::sync::Arc;
 use crate::config::BotConfig;
 use crate::commands::Command;
 use crate::handlers::handle_command;
 use teloxide::prelude::*;
 use teloxide::dispatching::UpdateFilterExt;
+use crate::gigachat::GigaChatApi;
 
 #[tokio::main]
 async fn main() {
@@ -16,7 +22,8 @@ async fn main() {
     log::info!("Starting SlayFridayBot...");
 
     let cfg = BotConfig::new();
-    let bot = Bot::new(cfg.token);
+    let bot = Bot::new(cfg.tg_token);
+    let generator = GigaChatApi::new(cfg.gigachat_client_id, cfg.gigachat_client_secret);
 
 
     // Commands dispatcher
@@ -26,6 +33,7 @@ async fn main() {
             .endpoint(handle_command));
 
     Dispatcher::builder(bot, handler)
+        .dependencies(dptree::deps![Arc::new(generator)])
         .enable_ctrlc_handler()
         .build()
         .dispatch()
