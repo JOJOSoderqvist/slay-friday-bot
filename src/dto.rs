@@ -22,14 +22,33 @@ pub struct GigaChatGenerateTextRequest {
     pub messages: Vec<GigaChatMessage>
 }
 
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum GigaChatRole {
+    System,
+    User,
+    Assistant
+}
+
+impl From<String> for GigaChatRole {
+    fn from(value: String) -> Self {
+        match value.as_str() {
+            "user" => GigaChatRole::User,
+            "system" => GigaChatRole::System,
+            "assistant" => GigaChatRole::Assistant,
+            _ => GigaChatRole::User,
+        }
+    }
+}
+
 #[derive(Serialize)]
 pub struct GigaChatMessage {
-    pub role: String,
+    pub role: GigaChatRole,
     pub content: String
 }
 
 impl GigaChatMessage {
-    pub fn new(role: String, content: String) -> Self {
+    pub fn new(role: GigaChatRole, content: String) -> Self {
         GigaChatMessage {
             role,
             content
@@ -39,7 +58,7 @@ impl GigaChatMessage {
     // TODO: Мб лучше создавать не тут
     pub fn new_system_message() -> Self {
         GigaChatMessage{
-            role: "system".to_string(),
+            role: GigaChatRole::System,
             content: TEXT_MODIFY_PROMPT.to_string()
         }
     }

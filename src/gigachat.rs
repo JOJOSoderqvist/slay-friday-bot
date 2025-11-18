@@ -5,7 +5,7 @@ use reqwest::{Certificate, Client, Url};
 use tokio::sync::Mutex;
 use uuid::Uuid;
 use tracing::{error, info, warn, instrument};
-use crate::dto::{GigaChatAuthRequest, GigaChatAuthResponse, GigaChatGenerateTextRequest, GigaChatGenerateTextResponse, GigaChatMessage};
+use crate::dto::{GigaChatAuthRequest, GigaChatAuthResponse, GigaChatGenerateTextRequest, GigaChatGenerateTextResponse, GigaChatMessage, GigaChatRole};
 use crate::errors::ApiError;
 use crate::errors::ApiError::{ApiClientBuildError, ApiStatusError, CertParseError, DecodeResponseError, NoContent, RequestError};
 
@@ -99,7 +99,7 @@ impl GigaChatApi {
 
 
         let system_message = GigaChatMessage::new_system_message();
-        let message_to_rephrase = GigaChatMessage::new("user".to_string(),
+        let message_to_rephrase = GigaChatMessage::new(GigaChatRole::User,
                                                        current_text.to_string());
         let request = GigaChatGenerateTextRequest {
             model: "GigaChat-2".to_string(),

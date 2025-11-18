@@ -10,6 +10,7 @@ mod constants;
 
 use std::process;
 use std::sync::Arc;
+use std::sync::atomic::AtomicUsize;
 use crate::config::BotConfig;
 use crate::commands::Command;
 use crate::handlers::handle_command;
@@ -32,13 +33,14 @@ async fn main() {
 
     let bot = Bot::new(cfg.tg_token);
     let generator = match GigaChatApi::new(cfg.gigachat_client_id, cfg.gigachat_client_secret) {
-        Ok(generator) => generator,
+        Ok(generator) => Arc::new(generator),
         Err(e) => {
             eprintln!("error happened configuring generator: {}", e);
             process::exit(1);
         }
     };
 
+    let generator_limiter = Arc::new(AtomicUsize::new(0));
 
     let subscriber = tracing_subscriber::registry()
         .with(EnvFilter::from_default_env().add_directive(cfg.log_level.into()))
@@ -54,7 +56,7 @@ async fn main() {
             .endpoint(handle_command));
 
     Dispatcher::builder(bot, handler)
-        .dependencies(dptree::deps![Arc::new(generator)])
+        .dependencies(dptree::deps![generator, generator_limiter])
         .enable_ctrlc_handler()
         .default_handler(|_upd| async {})
         .build()
