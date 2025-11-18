@@ -1,28 +1,40 @@
 use dotenvy::dotenv;
-use std::env;
+use std::{env};
+use std::str::FromStr;
+use tracing::Level;
+use crate::errors::BotConfigError;
+use crate::errors::BotConfigError::{BotTokenNotFound, GigaChatClientIDNotFound, GigaChatClientSecretNotFound, LogLevelNotFound, ParseLogLevelError};
 
 pub struct BotConfig {
     pub tg_token: String,
     pub gigachat_client_id: String,
-    pub gigachat_client_secret: String
+    pub gigachat_client_secret: String,
+    pub log_level: Level
 }
 
 impl BotConfig {
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self, BotConfigError> {
         dotenv().ok();
         let tg_token = env::var("TELOXIDE_TOKEN")
-            .expect("Bot token not found in .env file");
+            .map_err(BotTokenNotFound)?;
 
         let gigachat_client_id = env::var("GIGACHAT_CLIENT_ID")
-            .expect("GIGACHAT_CLIENT_ID token not found in .env file");
+            .map_err(GigaChatClientIDNotFound)?;
 
         let gigachat_client_secret = env::var("GIGACHAT_CLIENT_SECRET")
-            .expect("GIGACHAT_CLIENT_ID token not found in .env file");
+            .map_err(GigaChatClientSecretNotFound)?;
 
-        BotConfig {
+        let log_level_str = env::var("LOG_LEVEL")
+            .map_err(LogLevelNotFound)?;
+
+        let log_level = Level::from_str(&log_level_str)
+            .map_err(|_| ParseLogLevelError(log_level_str))?;
+
+        Ok(BotConfig {
             tg_token,
             gigachat_client_id,
-            gigachat_client_secret
-        }
+            gigachat_client_secret,
+            log_level
+        })
     }
 }

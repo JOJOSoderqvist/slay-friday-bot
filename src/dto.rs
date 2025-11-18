@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, TimestampSeconds};
+use serde_with::{serde_as, TimestampMilliSeconds};
 use std::time;
 use crate::constants::TEXT_MODIFY_PROMPT;
 
@@ -12,7 +12,7 @@ pub struct GigaChatAuthRequest {
 #[derive(Deserialize, Debug)]
 pub struct GigaChatAuthResponse {
     pub access_token: String,
-    #[serde_as(as = "TimestampSeconds<i64>")]
+    #[serde_as(as = "TimestampMilliSeconds<i64>")]
     pub expires_at: time::SystemTime
 }
 

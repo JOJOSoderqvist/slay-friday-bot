@@ -1,10 +1,12 @@
 use std::sync::Arc;
 use teloxide::prelude::*;
 use teloxide::utils::command::BotCommands;
+use tracing::{error, instrument};
 use crate::commands::Command;
 use crate::gigachat::GigaChatApi;
 use crate::utils::{get_time_until_friday, format_time_delta};
 
+#[instrument(skip(bot, generator, cmd, msg))]
 pub async fn handle_command(bot: Bot, msg: Message, cmd: Command, generator: Arc<GigaChatApi>) -> ResponseResult<()> {
     match cmd {
         Command::Help => {
@@ -25,7 +27,7 @@ pub async fn handle_command(bot: Bot, msg: Message, cmd: Command, generator: Arc
                     bot.send_message(msg.chat.id, new_text).await?;
                 }
                 Err(err) => {
-                    log::error!("Failed to rephrase text: {:?}", err);
+                    error!(error = %err, "Failed to rephrase text via GigaChat");
                     bot.send_message(msg.chat.id, text).await?;
                 }
             }
