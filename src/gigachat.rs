@@ -30,7 +30,6 @@ impl GigaChatApi {
             .build()
             .map_err(ApiClientBuildError)?;
 
-
         Ok(GigaChatApi{
             server: custom_client,
             client_id,
@@ -50,7 +49,6 @@ impl GigaChatApi {
         let raw_req = GigaChatAuthRequest {
             scope: "GIGACHAT_API_PERS".to_string(),
         };
-
 
         let response = self.server
             .post(auth_refresh_url)
@@ -97,7 +95,6 @@ impl GigaChatApi {
             self.refresh_auth_token().await?
         }
 
-
         let system_message = GigaChatMessage::new_system_message();
         let message_to_rephrase = GigaChatMessage::new(GigaChatRole::User,
                                                        current_text.to_string());
@@ -108,8 +105,6 @@ impl GigaChatApi {
 
         for attempt in 1..= 2 {
             debug!("{} {}", attempt, "Sending generation request...");
-
-
 
             let auth_header = {
                 let current_access_token = self.access_token.lock().await;
