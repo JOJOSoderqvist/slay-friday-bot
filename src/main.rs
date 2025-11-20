@@ -1,25 +1,23 @@
 mod config;
 mod commands;
 mod handlers;
-mod scheduler;
 mod utils;
-mod gigachat;
 mod errors;
-mod dto;
 mod constants;
+mod gigachat_api;
 
 use std::process;
 use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
 use crate::config::BotConfig;
 use crate::commands::Command;
-use crate::handlers::handle_command;
+use crate::handlers::{handle_command, ContentGenerator};
 use teloxide::prelude::*;
 use teloxide::dispatching::UpdateFilterExt;
 use tracing_subscriber::{fmt, EnvFilter};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use crate::gigachat::GigaChatApi;
+use crate::gigachat_api::api::GigaChatApi;
 
 #[tokio::main]
 async fn main() {
@@ -32,13 +30,15 @@ async fn main() {
     };
 
     let bot = Bot::new(cfg.tg_token);
-    let generator = match GigaChatApi::new(cfg.gigachat_client_id, cfg.gigachat_client_secret) {
-        Ok(generator) => Arc::new(generator),
+    let gigachat_generator = match GigaChatApi::new(cfg.gigachat_client_id, cfg.gigachat_client_secret) {
+        Ok(generator) => generator,
         Err(e) => {
             eprintln!("error happened configuring generator: {}", e);
             process::exit(1);
         }
     };
+
+    let dyn_generator: Arc<dyn ContentGenerator> = Arc::new(gigachat_generator);
 
     let generator_limiter = Arc::new(AtomicUsize::new(0));
 
@@ -56,7 +56,7 @@ async fn main() {
             .endpoint(handle_command));
 
     Dispatcher::builder(bot, handler)
-        .dependencies(dptree::deps![generator, generator_limiter])
+        .dependencies(dptree::deps![dyn_generator, generator_limiter])
         .enable_ctrlc_handler()
         .default_handler(|_upd| async {})
         .build()

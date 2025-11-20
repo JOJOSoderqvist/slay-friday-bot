@@ -1,13 +1,15 @@
 use std::fs;
 use std::time::{SystemTime, Duration};
+use async_trait::async_trait;
 use log::debug;
 use reqwest::{Certificate, Client, Url};
 use tokio::sync::Mutex;
 use uuid::Uuid;
 use tracing::{error, info, warn, instrument};
-use crate::dto::{GigaChatAuthRequest, GigaChatAuthResponse, GigaChatGenerateTextRequest, GigaChatGenerateTextResponse, GigaChatMessage, GigaChatRole};
+use crate::gigachat_api::dto::{GigaChatAuthRequest, GigaChatAuthResponse, GigaChatGenerateTextRequest, GigaChatGenerateTextResponse, GigaChatMessage, GigaChatRole};
 use crate::errors::ApiError;
 use crate::errors::ApiError::{ApiClientBuildError, ApiStatusError, CertParseError, DecodeResponseError, NoContent, RequestError};
+use crate::handlers::ContentGenerator;
 
 #[derive(Debug)]
 pub struct GigaChatApi {
@@ -81,9 +83,12 @@ impl GigaChatApi {
         info!("Successfully refreshed token");
         Ok(())
     }
+}
 
+#[async_trait]
+impl ContentGenerator for GigaChatApi {
     #[instrument(skip(self, current_text), err)]
-    pub async fn rephrase_text(&self, current_text: &str) -> Result<String, ApiError> {
+    async fn rephrase_text(&self, current_text: &str) -> Result<String, ApiError> {
         info!("Starting to rephrase text");
 
         let is_expired = {

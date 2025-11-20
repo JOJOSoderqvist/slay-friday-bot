@@ -1,17 +1,23 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use async_trait::async_trait;
 use teloxide::prelude::*;
 use teloxide::utils::command::BotCommands;
 use tracing::{error, instrument};
 use crate::commands::Command;
-use crate::gigachat::GigaChatApi;
+use crate::errors::ApiError;
 use crate::utils::{get_time_until_friday, format_time_delta};
+
+#[async_trait]
+pub trait ContentGenerator: Send + Sync {
+    async fn rephrase_text(&self, current_text: &str) -> Result<String, ApiError>;
+}
 
 #[instrument(skip(bot, generator, cmd, msg))]
 pub async fn handle_command(bot: Bot,
                             msg: Message,
                             cmd: Command,
-                            generator: Arc<GigaChatApi>,
+                            generator: Arc<dyn ContentGenerator>,
                             generator_limiter: Arc<AtomicUsize>) -> ResponseResult<()>
 {
     match cmd {
