@@ -110,7 +110,11 @@ impl GigaChatApi {
             debug!("{} {}", attempt, "Sending generation request...");
 
 
-            let current_access_token = self.access_token.lock().await.clone();
+
+            let auth_header = {
+                let current_access_token = self.access_token.lock().await;
+                format!("Bearer {}", current_access_token)
+            };
 
             let generate_content_url =
                 Url::parse("https://gigachat.devices.sberbank.ru/api/v1/chat/completions")?;
@@ -118,7 +122,7 @@ impl GigaChatApi {
             debug!("Sending generation request to GigaChat...");
             let response = self.server
                 .post(generate_content_url)
-                .header(reqwest::header::AUTHORIZATION, format!("Bearer {}", current_access_token))
+                .header(reqwest::header::AUTHORIZATION, auth_header)
                 .json(&request)
                 .send()
                 .await
@@ -147,9 +151,9 @@ impl GigaChatApi {
             let resp_text = response.text().await.map_err(DecodeResponseError)?;
             let response: GigaChatGenerateTextResponse = serde_json::from_str(&resp_text)?;
 
-            if let Some(new_text) = response.choices.first() {
+            if let Some(new_text) = response.choices.into_iter().next() {
                 info!("Text rephrased successfully");
-                return Ok(new_text.message.content.to_string())
+                return Ok(new_text.message.content)
             }
         }
 
