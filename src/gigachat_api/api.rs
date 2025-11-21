@@ -9,8 +9,7 @@ use tracing::{error, info, warn, instrument};
 use crate::gigachat_api::dto::{GigaChatAuthRequest, GigaChatAuthResponse, GigaChatGenerateTextRequest, GigaChatGenerateTextResponse, GigaChatMessage, GigaChatRole};
 use crate::errors::ApiError;
 use crate::errors::ApiError::{ApiClientBuildError, ApiStatusError, CertParseError, DecodeResponseError, NoContent, RequestError};
-use crate::handlers::ContentGenerator;
-
+use crate::generation_controller::ContentRephraser;
 #[derive(Debug)]
 pub struct GigaChatApi {
     pub server: Client,
@@ -86,7 +85,7 @@ impl GigaChatApi {
 }
 
 #[async_trait]
-impl ContentGenerator for GigaChatApi {
+impl ContentRephraser for GigaChatApi {
     #[instrument(skip(self, current_text), err)]
     async fn rephrase_text(&self, current_text: &str) -> Result<String, ApiError> {
         info!("Starting to rephrase text");

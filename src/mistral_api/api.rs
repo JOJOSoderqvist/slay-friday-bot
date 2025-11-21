@@ -4,7 +4,7 @@ use reqwest::{Client, Url};
 use tracing::{debug, error, instrument, warn};
 use crate::errors::ApiError;
 use crate::errors::ApiError::{ApiStatusError, DecodeResponseError, NoContent, RequestError};
-use crate::handlers::ContentGenerator;
+use crate::generation_controller::ContentRephraser;
 use crate::mistral_api::dto::{MistralGenerateTextRequest, MistralGenerateTextResponse, MistralMessage};
 
 #[derive(Debug)]
@@ -23,7 +23,7 @@ impl MistralApi {
 }
 
 #[async_trait]
-impl ContentGenerator for MistralApi {
+impl ContentRephraser for MistralApi {
     #[instrument(skip(self, current_text), err)]
     async fn rephrase_text(&self, current_text: &str) -> Result<String, ApiError> {
         info!("Starting generation through Mistral");

@@ -6,10 +6,10 @@ mod errors;
 mod constants;
 mod gigachat_api;
 mod mistral_api;
+mod generation_controller;
 
 use std::process;
 use std::sync::Arc;
-use std::sync::atomic::AtomicUsize;
 use crate::config::BotConfig;
 use crate::commands::Command;
 use crate::handlers::{handle_command, ContentGenerator};
@@ -18,6 +18,7 @@ use teloxide::dispatching::UpdateFilterExt;
 use tracing_subscriber::{fmt, EnvFilter};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use crate::generation_controller::{ContentRephraser, GenerationController};
 use crate::gigachat_api::api::GigaChatApi;
 use crate::mistral_api::api::MistralApi;
 
@@ -32,19 +33,19 @@ async fn main() {
     };
 
     let bot = Bot::new(cfg.tg_token);
-    let _ = match GigaChatApi::new(cfg.gigachat_client_id, cfg.gigachat_client_secret) {
-        Ok(generator) => generator,
+    let gigachat_generator = match GigaChatApi::new(cfg.gigachat_client_id, cfg.gigachat_client_secret) {
+        Ok(generator) => Arc::new(generator) as Arc<dyn ContentRephraser>,
         Err(e) => {
             eprintln!("error happened configuring generator: {}", e);
             process::exit(1);
         }
     };
-    
-    let mistral_generator = MistralApi::new(cfg.mistral_token);
 
-    let dyn_generator: Arc<dyn ContentGenerator> = Arc::new(mistral_generator);
+    let mistral_generator = Arc::new(MistralApi::new(cfg.mistral_token))
+        as Arc<dyn ContentRephraser>;
 
-    let generator_limiter = Arc::new(AtomicUsize::new(0));
+    let generation_controller =
+        Arc::new(GenerationController::new(vec![gigachat_generator, mistral_generator])) as Arc<dyn ContentGenerator>;
 
     let subscriber = tracing_subscriber::registry()
         .with(EnvFilter::from_default_env().add_directive(cfg.log_level.into()))
@@ -60,7 +61,7 @@ async fn main() {
             .endpoint(handle_command));
 
     Dispatcher::builder(bot, handler)
-        .dependencies(dptree::deps![dyn_generator, generator_limiter])
+        .dependencies(dptree::deps![generation_controller])
         .enable_ctrlc_handler()
         .default_handler(|_upd| async {})
         .build()

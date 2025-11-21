@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use async_trait::async_trait;
 use teloxide::prelude::*;
 use teloxide::utils::command::BotCommands;
@@ -8,17 +7,17 @@ use crate::commands::Command;
 use crate::errors::ApiError;
 use crate::utils::{get_time_until_friday, format_time_delta};
 
+
 #[async_trait]
 pub trait ContentGenerator: Send + Sync {
-    async fn rephrase_text(&self, current_text: &str) -> Result<String, ApiError>;
+    async fn generate_text(&self, current_text: &str) -> Result<String, ApiError>;
 }
 
-#[instrument(skip(bot, generator, cmd, msg, generator_limiter))]
+#[instrument(skip(bot, generator, cmd, msg))]
 pub async fn handle_command(bot: Bot,
                             msg: Message,
                             cmd: Command,
-                            generator: Arc<dyn ContentGenerator>,
-                            generator_limiter: Arc<AtomicUsize>) -> ResponseResult<()>
+                            generator: Arc<dyn ContentGenerator>) -> ResponseResult<()>
 {
     match cmd {
         Command::Help => {
@@ -35,21 +34,16 @@ pub async fn handle_command(bot: Bot,
             };
 
 
-            let current_count = generator_limiter.fetch_add(1, Ordering::Relaxed) + 1;
-
-            if current_count % 3 == 0 {
-                match generator.rephrase_text(text.as_str()).await {
-                    Ok(new_text) => {
-                        bot.send_message(msg.chat.id, new_text).await?;
-                    }
-                    Err(err) => {
-                        error!(error = %err, "Failed to rephrase text via GigaChat");
-                        bot.send_message(msg.chat.id, text).await?;
-                    }
+            match generator.generate_text(text.as_str()).await {
+                Ok(new_text) => {
+                    bot.send_message(msg.chat.id, new_text).await?;
                 }
-            } else {
-                bot.send_message(msg.chat.id, text).await?;
+                Err(err) => {
+                    error!(error = %err, "Failed to rephrase text via GigaChat");
+                    bot.send_message(msg.chat.id, text).await?;
+                }
             }
+            
         }
         Command::Stop => {
             bot.send_message(msg.chat.id, "Отключаю slay-уведомления. 💔").await?;
