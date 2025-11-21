@@ -5,6 +5,7 @@ mod utils;
 mod errors;
 mod constants;
 mod gigachat_api;
+mod mistral_api;
 
 use std::process;
 use std::sync::Arc;
@@ -18,6 +19,7 @@ use tracing_subscriber::{fmt, EnvFilter};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use crate::gigachat_api::api::GigaChatApi;
+use crate::mistral_api::api::MistralApi;
 
 #[tokio::main]
 async fn main() {
@@ -30,15 +32,17 @@ async fn main() {
     };
 
     let bot = Bot::new(cfg.tg_token);
-    let gigachat_generator = match GigaChatApi::new(cfg.gigachat_client_id, cfg.gigachat_client_secret) {
+    let _ = match GigaChatApi::new(cfg.gigachat_client_id, cfg.gigachat_client_secret) {
         Ok(generator) => generator,
         Err(e) => {
             eprintln!("error happened configuring generator: {}", e);
             process::exit(1);
         }
     };
+    
+    let mistral_generator = MistralApi::new(cfg.mistral_token);
 
-    let dyn_generator: Arc<dyn ContentGenerator> = Arc::new(gigachat_generator);
+    let dyn_generator: Arc<dyn ContentGenerator> = Arc::new(mistral_generator);
 
     let generator_limiter = Arc::new(AtomicUsize::new(0));
 

@@ -13,7 +13,7 @@ pub trait ContentGenerator: Send + Sync {
     async fn rephrase_text(&self, current_text: &str) -> Result<String, ApiError>;
 }
 
-#[instrument(skip(bot, generator, cmd, msg))]
+#[instrument(skip(bot, generator, cmd, msg, generator_limiter))]
 pub async fn handle_command(bot: Bot,
                             msg: Message,
                             cmd: Command,

@@ -45,6 +45,9 @@ pub enum BotConfigError {
     #[error("Environment variable 'GIGACHAT_CLIENT_SECRET' not found")]
     GigaChatClientSecretNotFound(#[source] VarError),
 
+    #[error("Environment variable 'MISTRAL_TOKEN' not found")]
+    MistralTokenNotFound(#[source] VarError),
+
     #[error("Environment variable 'LOG_LEVEL' not found")]
     LogLevelNotFound(#[source] VarError),
 }
