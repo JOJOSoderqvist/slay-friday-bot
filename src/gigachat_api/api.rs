@@ -64,7 +64,7 @@ impl GigaChatApi {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
             error!(%status, %body, "Failed to refresh token");
-            return Err(ApiStatusError { status, body });
+            return Err(ApiStatusError { model: "gigachat".to_string(), status, body });
         }
 
         let resp_text = response.text()
@@ -135,7 +135,13 @@ impl ContentRephraser for GigaChatApi {
                 } else {
                     let body = response.text().await.unwrap_or_default();
                     error!(%body, "Failed to authenticate even after refresh");
-                    return Err(ApiStatusError { status: reqwest::StatusCode::UNAUTHORIZED, body });
+                    return Err(
+                        ApiStatusError{
+                            model: "gigachat".to_string(),
+                            status: reqwest::StatusCode::UNAUTHORIZED,
+                            body
+                        }
+                    );
                 }
             }
 
@@ -144,7 +150,7 @@ impl ContentRephraser for GigaChatApi {
                 let status = response.status();
                 let body = response.text().await.unwrap_or_default();
                 error!(%status, %body, "GigaChat generation failed");
-                return Err(ApiStatusError { status, body });
+                return Err(ApiStatusError { model: "gigachat".to_string(), status, body });
             }
 
             let resp_text = response.text().await.map_err(DecodeResponseError)?;

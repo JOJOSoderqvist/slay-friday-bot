@@ -12,8 +12,8 @@ pub enum ApiError {
     #[error("Failed to parse JSON response: {0}")]
     TransformJSONError(#[from] serde_json::Error),
 
-    #[error("GigaChat API error: Status {status}, Body: {body}")]
-    ApiStatusError { status: reqwest::StatusCode, body: String },
+    #[error("API error: Model {model} Status {status}, Body: {body}")]
+    ApiStatusError { model: String, status: reqwest::StatusCode, body: String },
 
     #[error("Certificate file error: {0}")]
     CertIoError(#[from] std::io::Error),
@@ -31,7 +31,10 @@ pub enum ApiError {
     NoContent,
 
     #[error("No models were provided")]
-    NoModels
+    NoModels,
+
+    #[error("Failed to generate content with all available models")]
+    GenFailed
 }
 
 #[derive(Error, Debug)]

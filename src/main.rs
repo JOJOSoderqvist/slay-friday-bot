@@ -18,7 +18,7 @@ use teloxide::dispatching::UpdateFilterExt;
 use tracing_subscriber::{fmt, EnvFilter};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use crate::generation_controller::{ContentRephraser, GenerationController};
+use crate::generation_controller::{ContentRephraser, GenerationController, ModelPool};
 use crate::gigachat_api::api::GigaChatApi;
 use crate::mistral_api::api::MistralApi;
 
@@ -44,8 +44,12 @@ async fn main() {
     let mistral_generator = Arc::new(MistralApi::new(cfg.mistral_token))
         as Arc<dyn ContentRephraser>;
 
+    let model_pool = ModelPool::from(
+        vec![gigachat_generator, mistral_generator]
+    );
+
     let generation_controller =
-        Arc::new(GenerationController::new(vec![gigachat_generator, mistral_generator])) as Arc<dyn ContentGenerator>;
+        Arc::new(GenerationController::new(model_pool)) as Arc<dyn ContentGenerator>;
 
     let subscriber = tracing_subscriber::registry()
         .with(EnvFilter::from_default_env().add_directive(cfg.log_level.into()))

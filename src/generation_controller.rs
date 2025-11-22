@@ -1,13 +1,13 @@
 use std::sync::Arc;
 use async_trait::async_trait;
-use log::error;
-use rand::seq::IndexedRandom;
+use tracing::error;
+use rand::seq::{IndexedRandom, SliceRandom};
 use tracing::instrument;
 use crate::errors::ApiError;
-use crate::errors::ApiError::NoModels;
+use crate::errors::ApiError::{GenFailed, NoModels};
 use crate::handlers::ContentGenerator;
 
-type ModelPool = Vec<Arc<dyn ContentRephraser>>;
+pub type ModelPool = Vec<Arc<dyn ContentRephraser>>;
 
 #[async_trait]
 pub trait ContentRephraser: Send + Sync {
@@ -17,11 +17,10 @@ pub trait ContentRephraser: Send + Sync {
 pub struct GenerationController {
     pub models: ModelPool
 }
-
 impl GenerationController {
-    pub fn new(models: Vec<Arc<dyn ContentRephraser>>) -> Self {
+    pub fn new(models: ModelPool) -> Self {
         GenerationController {
-            models: ModelPool::from(models)
+            models
         }
     }
 }
@@ -31,16 +30,30 @@ impl GenerationController {
 impl ContentGenerator for GenerationController {
     #[instrument(skip(self, current_text), err)]
     async fn generate_text(&self, current_text: &str) -> Result<String, ApiError> {
-        let picked_model = match self.models.choose(&mut rand::rng()) {
-            Some(model) => model,
-            None => {
-                error!("no models were provided");
-                return Err(NoModels)
+        if self.models.is_empty() {
+            error!("no models were provided");
+            return Err(NoModels)
+        }
+
+        let mut local_models = self.models.clone();
+        local_models.shuffle(&mut rand::rng());
+
+        for sh in local_models {
+            match sh.rephrase_text(current_text).await {
+                Ok(new_text) => {
+                    return Ok(new_text)
+                }
+
+                Err(err) => {
+                    error!(error = %err, "failed to generated content, trying next model");
+                    continue
+                }
             }
-        };
+        }
+
         
-        let generated_text = picked_model.rephrase_text(current_text).await?;
-        Ok(generated_text)
+        error!("Generation with all models has failed");
+        Err(GenFailed)
     }
 }
 

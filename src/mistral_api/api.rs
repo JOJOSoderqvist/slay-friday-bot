@@ -53,7 +53,7 @@ impl ContentRephraser for MistralApi {
                 let status = response.status();
                 let body = response.text().await.unwrap_or_default();
                 error!(%status, %body, "Mistral generation failed");
-                return Err(ApiStatusError { status, body });
+                return Err(ApiStatusError { model: "mistral".to_string(), status, body });
             }
 
             let resp_text = response.text().await.map_err(DecodeResponseError)?;
