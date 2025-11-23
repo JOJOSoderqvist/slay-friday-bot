@@ -1,26 +1,28 @@
-mod config;
 mod commands;
-mod handlers;
-mod utils;
-mod errors;
+mod common;
+mod config;
 mod constants;
-mod gigachat_api;
-mod mistral_api;
+mod errors;
 mod generation_controller;
+mod gigachat_api;
+mod grok_api;
+mod handlers;
+mod mistral_api;
+mod utils;
 
-use std::process;
-use std::sync::Arc;
-use crate::config::BotConfig;
 use crate::commands::Command;
-use crate::handlers::{handle_command, ContentGenerator};
-use teloxide::prelude::*;
-use teloxide::dispatching::UpdateFilterExt;
-use tracing_subscriber::{fmt, EnvFilter};
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
+use crate::config::BotConfig;
 use crate::generation_controller::{ContentRephraser, GenerationController, ModelPool};
 use crate::gigachat_api::api::GigaChatApi;
+use crate::handlers::{ContentGenerator, handle_command};
 use crate::mistral_api::api::MistralApi;
+use std::process;
+use std::sync::Arc;
+use teloxide::dispatching::UpdateFilterExt;
+use teloxide::prelude::*;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::{EnvFilter, fmt};
 
 #[tokio::main]
 async fn main() {
@@ -33,20 +35,19 @@ async fn main() {
     };
 
     let bot = Bot::new(cfg.tg_token);
-    let gigachat_generator = match GigaChatApi::new(cfg.gigachat_client_id, cfg.gigachat_client_secret) {
-        Ok(generator) => Arc::new(generator) as Arc<dyn ContentRephraser>,
-        Err(e) => {
-            eprintln!("error happened configuring generator: {}", e);
-            process::exit(1);
-        }
-    };
+    let gigachat_generator =
+        match GigaChatApi::new(cfg.gigachat_client_id, cfg.gigachat_client_secret) {
+            Ok(generator) => Arc::new(generator) as Arc<dyn ContentRephraser>,
+            Err(e) => {
+                eprintln!("error happened configuring generator: {}", e);
+                process::exit(1);
+            }
+        };
 
-    let mistral_generator = Arc::new(MistralApi::new(cfg.mistral_token))
-        as Arc<dyn ContentRephraser>;
+    let mistral_generator =
+        Arc::new(MistralApi::new(cfg.mistral_token)) as Arc<dyn ContentRephraser>;
 
-    let model_pool = ModelPool::from(
-        vec![gigachat_generator, mistral_generator]
-    );
+    let model_pool = ModelPool::from(vec![gigachat_generator, mistral_generator]);
 
     let generation_controller =
         Arc::new(GenerationController::new(model_pool)) as Arc<dyn ContentGenerator>;
@@ -57,12 +58,12 @@ async fn main() {
 
     subscriber.init();
 
-
     // Commands dispatcher
-    let handler = dptree::entry()
-        .branch(Update::filter_message()
+    let handler = dptree::entry().branch(
+        Update::filter_message()
             .filter_command::<Command>()
-            .endpoint(handle_command));
+            .endpoint(handle_command),
+    );
 
     Dispatcher::builder(bot, handler)
         .dependencies(dptree::deps![generation_controller])

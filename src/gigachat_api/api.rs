@@ -1,3 +1,4 @@
+use crate::common::{Model, ensure_success};
 use crate::errors::ApiError;
 use crate::errors::ApiError::{
     ApiClientBuildError, ApiStatusError, CertParseError, DecodeResponseError, NoContent,
@@ -8,7 +9,6 @@ use crate::gigachat_api::dto::{
     GigaChatAuthRequest, GigaChatAuthResponse, GigaChatGenerateTextRequest,
     GigaChatGenerateTextResponse, GigaChatMessage, GigaChatRole,
 };
-use crate::utils::Model;
 use async_trait::async_trait;
 use log::debug;
 use reqwest::{Certificate, Client, Url};
@@ -25,6 +25,7 @@ pub struct GigaChatApi {
     client_secret: String,
     access_token: Mutex<String>,
     access_token_expire_at: Mutex<SystemTime>,
+    model: Model,
 }
 
 impl GigaChatApi {
@@ -44,6 +45,7 @@ impl GigaChatApi {
             client_secret,
             access_token: Mutex::new(String::new()),
             access_token_expire_at: Mutex::new(SystemTime::UNIX_EPOCH),
+            model: Model::Gigachat,
         })
     }
 
@@ -153,23 +155,18 @@ impl ContentRephraser for GigaChatApi {
                 }
             }
 
-            if !response.status().is_success() {
-                let status = response.status();
-                let body = response.text().await.unwrap_or_default();
-                error!(%status, %body, "GigaChat generation failed");
-                if attempt == 1 {
-                    continue;
+            let response = match ensure_success(self.model, response).await {
+                Ok(resp) => resp,
+                Err(e) => {
+                    if attempt == 1 {
+                        continue;
+                    }
+                    return Err(e);
                 }
+            };
 
-                return Err(ApiStatusError {
-                    model: Model::Gigachat,
-                    status,
-                    body,
-                });
-            }
-
-            let resp_text = response.text().await.map_err(DecodeResponseError)?;
-            let response: GigaChatGenerateTextResponse = serde_json::from_str(&resp_text)?;
+            let response: GigaChatGenerateTextResponse =
+                response.json().await.map_err(DecodeResponseError)?;
 
             if let Some(new_text) = response.choices.into_iter().next() {
                 info!("Text rephrased successfully");
@@ -179,9 +176,5 @@ impl ContentRephraser for GigaChatApi {
 
         warn!("GigaChat returned 200 OK but empty choices");
         Err(NoContent)
-    }
-
-    fn get_model_name(&self) -> Model {
-        Model::Gigachat
     }
 }

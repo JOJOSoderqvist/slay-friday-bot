@@ -1,12 +1,11 @@
-use std::sync::Arc;
+use crate::commands::Command;
+use crate::errors::ApiError;
+use crate::utils::{format_time_delta, get_time_until_friday};
 use async_trait::async_trait;
+use std::sync::Arc;
 use teloxide::prelude::*;
 use teloxide::utils::command::BotCommands;
 use tracing::{error, instrument};
-use crate::commands::Command;
-use crate::errors::ApiError;
-use crate::utils::{get_time_until_friday, format_time_delta};
-
 
 #[async_trait]
 pub trait ContentGenerator: Send + Sync {
@@ -14,14 +13,16 @@ pub trait ContentGenerator: Send + Sync {
 }
 
 #[instrument(skip(bot, generator, cmd, msg))]
-pub async fn handle_command(bot: Bot,
-                            msg: Message,
-                            cmd: Command,
-                            generator: Arc<dyn ContentGenerator>) -> ResponseResult<()>
-{
+pub async fn handle_command(
+    bot: Bot,
+    msg: Message,
+    cmd: Command,
+    generator: Arc<dyn ContentGenerator>,
+) -> ResponseResult<()> {
     match cmd {
         Command::Help => {
-            bot.send_message(msg.chat.id, Command::descriptions().to_string()).await?;
+            bot.send_message(msg.chat.id, Command::descriptions().to_string())
+                .await?;
         }
         Command::Friday => {
             let text = if let Some(time_left) = get_time_until_friday() {
@@ -30,9 +31,10 @@ pub async fn handle_command(bot: Bot,
                     format_time_delta(time_left)
                 )
             } else {
-                String::from("SLAAAAAY! 💅🔥🖤 ЭТО НЕФОРСКАЯ ПЯТНИЦА, ДЕТКА! 🤘😈⛓️ Время сиять! ✨")
+                String::from(
+                    "SLAAAAAY! 💅🔥🖤 ЭТО НЕФОРСКАЯ ПЯТНИЦА, ДЕТКА! 🤘😈⛓️ Время сиять! ✨",
+                )
             };
-
 
             match generator.generate_text(text.as_str()).await {
                 Ok(new_text) => {
@@ -43,10 +45,10 @@ pub async fn handle_command(bot: Bot,
                     bot.send_message(msg.chat.id, text).await?;
                 }
             }
-            
         }
         Command::Stop => {
-            bot.send_message(msg.chat.id, "Отключаю slay-уведомления. 💔").await?;
+            bot.send_message(msg.chat.id, "Отключаю slay-уведомления. 💔")
+                .await?;
         }
     };
 

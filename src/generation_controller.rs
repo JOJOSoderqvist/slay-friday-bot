@@ -1,11 +1,11 @@
-use std::sync::Arc;
-use async_trait::async_trait;
-use tracing::error;
-use rand::seq::{IndexedRandom, SliceRandom};
-use tracing::instrument;
 use crate::errors::ApiError;
 use crate::errors::ApiError::{GenFailed, NoModels};
 use crate::handlers::ContentGenerator;
+use async_trait::async_trait;
+use rand::seq::{SliceRandom};
+use std::sync::Arc;
+use tracing::error;
+use tracing::instrument;
 
 pub type ModelPool = Vec<Arc<dyn ContentRephraser>>;
 
@@ -15,16 +15,13 @@ pub trait ContentRephraser: Send + Sync {
 }
 
 pub struct GenerationController {
-    pub models: ModelPool
+    pub models: ModelPool,
 }
 impl GenerationController {
     pub fn new(models: ModelPool) -> Self {
-        GenerationController {
-            models
-        }
+        GenerationController { models }
     }
 }
-
 
 #[async_trait]
 impl ContentGenerator for GenerationController {
@@ -32,7 +29,7 @@ impl ContentGenerator for GenerationController {
     async fn generate_text(&self, current_text: &str) -> Result<String, ApiError> {
         if self.models.is_empty() {
             error!("no models were provided");
-            return Err(NoModels)
+            return Err(NoModels);
         }
 
         let mut local_models = self.models.clone();
@@ -40,23 +37,16 @@ impl ContentGenerator for GenerationController {
 
         for sh in local_models {
             match sh.rephrase_text(current_text).await {
-                Ok(new_text) => {
-                    return Ok(new_text)
-                }
+                Ok(new_text) => return Ok(new_text),
 
                 Err(err) => {
                     error!(error = %err, "failed to generated content, trying next model");
-                    continue
+                    continue;
                 }
             }
         }
 
-        
         error!("Generation with all models has failed");
         Err(GenFailed)
     }
 }
-
-
-
-

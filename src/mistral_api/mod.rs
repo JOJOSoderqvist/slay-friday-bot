@@ -1,3 +1,2 @@
-mod dto;
-
 pub mod api;
+mod dto;
