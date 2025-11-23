@@ -1,23 +1,26 @@
+use crate::errors::ApiError;
+use crate::errors::ApiError::{ApiStatusError, DecodeResponseError, NoContent, RequestError};
+use crate::generation_controller::ContentRephraser;
+use crate::mistral_api::dto::{
+    MistralGenerateTextRequest, MistralGenerateTextResponse, MistralMessage,
+};
+use crate::utils::Model;
 use async_trait::async_trait;
 use log::info;
 use reqwest::{Client, Url};
 use tracing::{debug, error, instrument, warn};
-use crate::errors::ApiError;
-use crate::errors::ApiError::{ApiStatusError, DecodeResponseError, NoContent, RequestError};
-use crate::generation_controller::ContentRephraser;
-use crate::mistral_api::dto::{MistralGenerateTextRequest, MistralGenerateTextResponse, MistralMessage};
 
 #[derive(Debug)]
 pub struct MistralApi {
     server: Client,
-    token: String
+    token: String,
 }
 
 impl MistralApi {
     pub fn new(token: String) -> Self {
-        MistralApi{
+        MistralApi {
             server: Client::new(),
-            token
+            token,
         }
     }
 }
@@ -38,12 +41,15 @@ impl ContentRephraser for MistralApi {
         for attempt in 1..=2 {
             debug!("Sending request, attempt {}", attempt);
 
-            let generate_content_url =
-                Url::parse("https://api.mistral.ai/v1/chat/completions")?;
+            let generate_content_url = Url::parse("https://api.mistral.ai/v1/chat/completions")?;
 
-            let response = self.server
+            let response = self
+                .server
                 .post(generate_content_url)
-                .header(reqwest::header::AUTHORIZATION, format!("Bearer {}", self.token))
+                .header(
+                    reqwest::header::AUTHORIZATION,
+                    format!("Bearer {}", self.token),
+                )
                 .json(&request)
                 .send()
                 .await
@@ -53,7 +59,15 @@ impl ContentRephraser for MistralApi {
                 let status = response.status();
                 let body = response.text().await.unwrap_or_default();
                 error!(%status, %body, "Mistral generation failed");
-                return Err(ApiStatusError { model: "mistral".to_string(), status, body });
+                if attempt == 1 {
+                    continue;
+                }
+
+                return Err(ApiStatusError {
+                    model: Model::Mistral,
+                    status,
+                    body,
+                });
             }
 
             let resp_text = response.text().await.map_err(DecodeResponseError)?;
@@ -61,11 +75,15 @@ impl ContentRephraser for MistralApi {
 
             if let Some(new_text) = response.choices.into_iter().next() {
                 info!("Text rephrased successfully");
-                return Ok(new_text.message.content)
+                return Ok(new_text.message.content);
             }
         }
 
         warn!("Mistral returned 200 OK but empty choices");
         Err(NoContent)
+    }
+
+    fn get_model_name(&self) -> Model {
+        Model::Mistral
     }
 }

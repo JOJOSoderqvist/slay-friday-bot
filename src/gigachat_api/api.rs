@@ -1,42 +1,49 @@
-use std::fs;
-use std::time::{SystemTime, Duration};
+use crate::errors::ApiError;
+use crate::errors::ApiError::{
+    ApiClientBuildError, ApiStatusError, CertParseError, DecodeResponseError, NoContent,
+    RequestError,
+};
+use crate::generation_controller::ContentRephraser;
+use crate::gigachat_api::dto::{
+    GigaChatAuthRequest, GigaChatAuthResponse, GigaChatGenerateTextRequest,
+    GigaChatGenerateTextResponse, GigaChatMessage, GigaChatRole,
+};
+use crate::utils::Model;
 use async_trait::async_trait;
 use log::debug;
 use reqwest::{Certificate, Client, Url};
+use std::fs;
+use std::time::{Duration, SystemTime};
 use tokio::sync::Mutex;
+use tracing::{error, info, instrument, warn};
 use uuid::Uuid;
-use tracing::{error, info, warn, instrument};
-use crate::gigachat_api::dto::{GigaChatAuthRequest, GigaChatAuthResponse, GigaChatGenerateTextRequest, GigaChatGenerateTextResponse, GigaChatMessage, GigaChatRole};
-use crate::errors::ApiError;
-use crate::errors::ApiError::{ApiClientBuildError, ApiStatusError, CertParseError, DecodeResponseError, NoContent, RequestError};
-use crate::generation_controller::ContentRephraser;
+
 #[derive(Debug)]
 pub struct GigaChatApi {
     pub server: Client,
     client_id: String,
     client_secret: String,
     access_token: Mutex<String>,
-    access_token_expire_at: Mutex<SystemTime>
+    access_token_expire_at: Mutex<SystemTime>,
 }
 
 impl GigaChatApi {
     pub fn new(client_id: String, client_secret: String) -> Result<Self, ApiError> {
         let cert_pem = fs::read("cert.crt")?;
 
-        let cert = Certificate::from_pem(&cert_pem)
-            .map_err(CertParseError)?;
+        let cert = Certificate::from_pem(&cert_pem).map_err(CertParseError)?;
 
         let custom_client = Client::builder()
             .add_root_certificate(cert)
             .build()
             .map_err(ApiClientBuildError)?;
 
-        Ok(GigaChatApi{
+        Ok(GigaChatApi {
             server: custom_client,
             client_id,
             client_secret,
             access_token: Mutex::new(String::new()),
-            access_token_expire_at: Mutex::new(SystemTime::UNIX_EPOCH)
+            access_token_expire_at: Mutex::new(SystemTime::UNIX_EPOCH),
         })
     }
 
@@ -44,14 +51,14 @@ impl GigaChatApi {
     async fn refresh_auth_token(&self) -> Result<(), ApiError> {
         info!("Starting to refresh token");
 
-        let auth_refresh_url =
-            Url::parse("https://ngw.devices.sberbank.ru:9443/api/v2/oauth")?;
+        let auth_refresh_url = Url::parse("https://ngw.devices.sberbank.ru:9443/api/v2/oauth")?;
 
         let raw_req = GigaChatAuthRequest {
             scope: "GIGACHAT_API_PERS".to_string(),
         };
 
-        let response = self.server
+        let response = self
+            .server
             .post(auth_refresh_url)
             .basic_auth(&self.client_id, Some(&self.client_secret))
             .header("RqUID", Uuid::new_v4().to_string())
@@ -64,12 +71,14 @@ impl GigaChatApi {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
             error!(%status, %body, "Failed to refresh token");
-            return Err(ApiStatusError { model: "gigachat".to_string(), status, body });
+            return Err(ApiStatusError {
+                model: Model::Gigachat,
+                status,
+                body,
+            });
         }
 
-        let resp_text = response.text()
-            .await
-            .map_err(DecodeResponseError)?;
+        let resp_text = response.text().await.map_err(DecodeResponseError)?;
 
         let auth_response: GigaChatAuthResponse = serde_json::from_str(&resp_text)?;
 
@@ -100,14 +109,14 @@ impl ContentRephraser for GigaChatApi {
         }
 
         let system_message = GigaChatMessage::new_system_message();
-        let message_to_rephrase = GigaChatMessage::new(GigaChatRole::User,
-                                                       current_text.to_string());
+        let message_to_rephrase =
+            GigaChatMessage::new(GigaChatRole::User, current_text.to_string());
         let request = GigaChatGenerateTextRequest {
             model: "GigaChat-2".to_string(),
             messages: vec![system_message, message_to_rephrase],
         };
 
-        for attempt in 1..= 2 {
+        for attempt in 1..=2 {
             debug!("{} {}", attempt, "Sending generation request...");
 
             let auth_header = {
@@ -119,7 +128,8 @@ impl ContentRephraser for GigaChatApi {
                 Url::parse("https://gigachat.devices.sberbank.ru/api/v1/chat/completions")?;
 
             debug!("Sending generation request to GigaChat...");
-            let response = self.server
+            let response = self
+                .server
                 .post(generate_content_url)
                 .header(reqwest::header::AUTHORIZATION, auth_header)
                 .json(&request)
@@ -135,22 +145,27 @@ impl ContentRephraser for GigaChatApi {
                 } else {
                     let body = response.text().await.unwrap_or_default();
                     error!(%body, "Failed to authenticate even after refresh");
-                    return Err(
-                        ApiStatusError{
-                            model: "gigachat".to_string(),
-                            status: reqwest::StatusCode::UNAUTHORIZED,
-                            body
-                        }
-                    );
+                    return Err(ApiStatusError {
+                        model: Model::Gigachat,
+                        status: reqwest::StatusCode::UNAUTHORIZED,
+                        body,
+                    });
                 }
             }
-
 
             if !response.status().is_success() {
                 let status = response.status();
                 let body = response.text().await.unwrap_or_default();
                 error!(%status, %body, "GigaChat generation failed");
-                return Err(ApiStatusError { model: "gigachat".to_string(), status, body });
+                if attempt == 1 {
+                    continue;
+                }
+
+                return Err(ApiStatusError {
+                    model: Model::Gigachat,
+                    status,
+                    body,
+                });
             }
 
             let resp_text = response.text().await.map_err(DecodeResponseError)?;
@@ -158,11 +173,15 @@ impl ContentRephraser for GigaChatApi {
 
             if let Some(new_text) = response.choices.into_iter().next() {
                 info!("Text rephrased successfully");
-                return Ok(new_text.message.content)
+                return Ok(new_text.message.content);
             }
         }
 
         warn!("GigaChat returned 200 OK but empty choices");
         Err(NoContent)
+    }
+
+    fn get_model_name(&self) -> Model {
+        Model::Gigachat
     }
 }

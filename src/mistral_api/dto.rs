@@ -1,17 +1,17 @@
+use crate::constants::TEXT_MODIFY_PROMPT;
 use serde::{Deserialize, Serialize};
-use crate::constants::{TEXT_MODIFY_PROMPT};
 
 #[derive(Serialize, Debug)]
 pub struct MistralGenerateTextRequest {
     pub model: String,
-    pub messages: Vec<MistralMessage>
+    pub messages: Vec<MistralMessage>,
 }
 
 impl MistralGenerateTextRequest {
     pub fn new(messages: Vec<MistralMessage>) -> Self {
-        MistralGenerateTextRequest{
+        MistralGenerateTextRequest {
             model: "mistral-small-latest".to_string(),
-            messages
+            messages,
         }
     }
 }
@@ -19,7 +19,7 @@ impl MistralGenerateTextRequest {
 #[derive(Serialize, Debug)]
 pub struct MistralMessage {
     pub role: String,
-    pub content: String
+    pub content: String,
 }
 
 impl MistralMessage {
@@ -40,15 +40,15 @@ impl MistralMessage {
 
 #[derive(Deserialize, Debug)]
 pub struct MistralGenerateTextResponse {
-    pub choices: Vec<MistralChoiceResponse>
+    pub choices: Vec<MistralChoiceResponse>,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct MistralChoiceResponse {
-    pub message: MistralMessageResponse
+    pub message: MistralMessageResponse,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct MistralMessageResponse {
-    pub content: String
+    pub content: String,
 }

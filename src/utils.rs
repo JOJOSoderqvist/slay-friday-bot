@@ -1,11 +1,29 @@
+use std::fmt::Display;
+
 use chrono::{Datelike, Duration, Utc, Weekday};
 use chrono_tz::Europe::Moscow;
+
+#[derive(Debug)]
+pub enum Model {
+    Gigachat,
+    Mistral,
+}
+
+impl Display for Model {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Model::Gigachat => write!(f, "Gigachat"),
+            Model::Mistral => write!(f, "Mistral"),
+        }
+    }
+}
 
 pub fn get_time_until_friday() -> Option<Duration> {
     let now = Utc::now().with_timezone(&Moscow);
     let current_weekday = now.weekday();
 
-    let days_to_add = (Weekday::Fri.number_from_monday() + 7 - current_weekday.number_from_monday()) % 7;
+    let days_to_add =
+        (Weekday::Fri.number_from_monday() + 7 - current_weekday.number_from_monday()) % 7;
     if days_to_add == 0 {
         return None;
     }

@@ -1,5 +1,6 @@
 use std::env::VarError;
 use thiserror::Error;
+use crate::utils::Model;
 
 #[derive(Error, Debug)]
 pub enum ApiError {
@@ -13,7 +14,7 @@ pub enum ApiError {
     TransformJSONError(#[from] serde_json::Error),
 
     #[error("API error: Model {model} Status {status}, Body: {body}")]
-    ApiStatusError { model: String, status: reqwest::StatusCode, body: String },
+    ApiStatusError { model: Model, status: reqwest::StatusCode, body: String },
 
     #[error("Certificate file error: {0}")]
     CertIoError(#[from] std::io::Error),

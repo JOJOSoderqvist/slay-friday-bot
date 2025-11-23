@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, TimestampMilliSeconds};
-use std::time;
 use crate::constants::TEXT_MODIFY_PROMPT;
+use serde::{Deserialize, Serialize};
+use serde_with::{TimestampMilliSeconds, serde_as};
+use std::time;
 
 #[derive(Serialize, Debug)]
 pub struct GigaChatAuthRequest {
@@ -13,13 +13,13 @@ pub struct GigaChatAuthRequest {
 pub struct GigaChatAuthResponse {
     pub access_token: String,
     #[serde_as(as = "TimestampMilliSeconds<i64>")]
-    pub expires_at: time::SystemTime
+    pub expires_at: time::SystemTime,
 }
 
 #[derive(Serialize)]
 pub struct GigaChatGenerateTextRequest {
     pub model: String,
-    pub messages: Vec<GigaChatMessage>
+    pub messages: Vec<GigaChatMessage>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -27,7 +27,7 @@ pub struct GigaChatGenerateTextRequest {
 pub enum GigaChatRole {
     System,
     User,
-    Assistant
+    Assistant,
 }
 
 impl From<String> for GigaChatRole {
@@ -44,30 +44,26 @@ impl From<String> for GigaChatRole {
 #[derive(Serialize)]
 pub struct GigaChatMessage {
     pub role: GigaChatRole,
-    pub content: String
+    pub content: String,
 }
 
 impl GigaChatMessage {
     pub fn new(role: GigaChatRole, content: String) -> Self {
-        GigaChatMessage {
-            role,
-            content
-        }
+        GigaChatMessage { role, content }
     }
 
     // TODO: Мб лучше создавать не тут
     pub fn new_system_message() -> Self {
-        GigaChatMessage{
+        GigaChatMessage {
             role: GigaChatRole::System,
-            content: TEXT_MODIFY_PROMPT.to_string()
+            content: TEXT_MODIFY_PROMPT.to_string(),
         }
     }
 }
 
-
 #[derive(Deserialize)]
 pub struct GigaChatGenerateTextResponse {
-    pub choices: Vec<GigaChatChoice>
+    pub choices: Vec<GigaChatChoice>,
 }
 
 #[derive(Deserialize)]
