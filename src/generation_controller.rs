@@ -1,14 +1,14 @@
-use std::collections::VecDeque;
+use crate::common::Model;
 use crate::errors::ApiError;
 use crate::errors::ApiError::{GenFailed, NoModels};
 use crate::handlers::ContentGenerator;
 use async_trait::async_trait;
-use rand::seq::{SliceRandom};
+use rand::seq::SliceRandom;
+use std::collections::VecDeque;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::error;
 use tracing::instrument;
-use crate::common::Model;
 
 pub type ModelPool = Vec<Arc<dyn ContentRephraser>>;
 
@@ -21,7 +21,7 @@ pub trait ContentRephraser: Send + Sync {
 
 pub struct GenerationController {
     pub models: ModelPool,
-    storage: Mutex<VecDeque<(Model, String)>>
+    storage: Mutex<VecDeque<(Model, String)>>,
 }
 impl GenerationController {
     pub fn new(models: ModelPool) -> Self {
@@ -30,7 +30,7 @@ impl GenerationController {
 
         GenerationController {
             models,
-            storage: Mutex::new(storage)
+            storage: Mutex::new(storage),
         }
     }
 
@@ -62,7 +62,7 @@ impl ContentGenerator for GenerationController {
                     let model_name = sh.get_model_name();
                     self.add_storage_entry(model_name, new_text.as_str()).await;
 
-                    return Ok(new_text)
+                    return Ok(new_text);
                 }
 
                 Err(err) => {
@@ -79,10 +79,9 @@ impl ContentGenerator for GenerationController {
     async fn get_message_info(&self, text: &str) -> Option<Model> {
         let storage_lock = self.storage.lock().await;
 
-
         for entry in storage_lock.iter() {
             if entry.1 == text {
-                return Some(entry.0)
+                return Some(entry.0);
             }
         }
 

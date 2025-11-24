@@ -14,6 +14,7 @@ use crate::commands::Command;
 use crate::config::BotConfig;
 use crate::generation_controller::{ContentRephraser, GenerationController, ModelPool};
 use crate::gigachat_api::api::GigaChatApi;
+use crate::grok_api::api::GrokApi;
 use crate::handlers::{ContentGenerator, handle_command};
 use crate::mistral_api::api::MistralApi;
 use std::process;
@@ -47,7 +48,15 @@ async fn main() {
     let mistral_generator =
         Arc::new(MistralApi::new(cfg.mistral_token)) as Arc<dyn ContentRephraser>;
 
-    let model_pool = ModelPool::from(vec![gigachat_generator, mistral_generator]);
+    let grok_generator = match GrokApi::new(cfg.grok_token, cfg.proxy_url) {
+        Ok(generator) => Arc::new(generator) as Arc<dyn ContentRephraser>,
+        Err(e) => {
+            eprintln!("error happened configuring generator: {}", e);
+            process::exit(1);
+        }
+    };
+
+    let model_pool = ModelPool::from(vec![gigachat_generator, mistral_generator, grok_generator]);
 
     let generation_controller =
         Arc::new(GenerationController::new(model_pool)) as Arc<dyn ContentGenerator>;
