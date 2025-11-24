@@ -177,4 +177,8 @@ impl ContentRephraser for GigaChatApi {
         warn!("GigaChat returned 200 OK but empty choices");
         Err(NoContent)
     }
+
+    fn get_model_name(&self) -> Model {
+        self.model
+    }
 }

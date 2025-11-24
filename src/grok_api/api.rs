@@ -78,4 +78,8 @@ impl ContentRephraser for GrokApi {
         warn!("No content was generated");
         Err(NoContent)
     }
+
+    fn get_model_name(&self) -> Model {
+        self.model
+    }
 }

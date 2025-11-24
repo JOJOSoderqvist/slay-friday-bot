@@ -13,4 +13,6 @@ pub enum Command {
     Friday,
     #[command(description = "Остановить уведомления.")]
     Stop,
+    #[command(description = "Показать, какая модель сгенерировала сообщние (из последних 10)")]
+    Model,
 }
