@@ -15,4 +15,6 @@ pub enum Command {
     Model,
     #[command(description = "Отправить стикер с определенным названием.\nНапример /sticker xdd")]
     Sticker(String),
+    #[command(description = "Показать доступные стикеры")]
+    ListStickers
 }

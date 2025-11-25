@@ -99,10 +99,22 @@ pub async fn handle_command(
                 }
             },
             Err(e) => {
-                info!("failed to parse sticker name {}", e.to_string());
+                info!("failed to parse sticker name {}", e);
                 bot.send_message(msg.chat.id, e.to_string()).await?;
             }
         },
+
+        Command::ListStickers => {
+            let mut available_stickers: Vec<&str> = STICKERS_MAP.keys().cloned().collect();
+
+            available_stickers.sort();
+
+            bot.send_message(
+                msg.chat.id,
+                format!("Доступные стикеры:\n{}", available_stickers.join("\n")),
+            )
+            .await?;
+        }
     }
 
     Ok(())
