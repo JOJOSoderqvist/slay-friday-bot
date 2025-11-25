@@ -1,10 +1,10 @@
 use crate::commands::Command;
 use crate::common::Model;
-use crate::constants::STICKER_MAP;
+use crate::constants::STICKERS_MAP;
 use crate::errors::ApiError;
-use crate::utils::{format_time_delta, get_time_until_friday};
+use crate::utils::{format_time_delta, get_time_until_friday, parse_sticker_name};
 use async_trait::async_trait;
-use log::debug;
+use log::{debug, info};
 use std::sync::Arc;
 use teloxide::prelude::*;
 use teloxide::types::{FileId, InputFile};
@@ -83,41 +83,27 @@ pub async fn handle_command(
             }
         }
 
-        Command::Stop => {
-            bot.send_message(msg.chat.id, "Отключаю slay-уведомления. 💔")
-                .await?;
-        }
-
-        Command::Xdd => {
-            let sticker = STICKER_MAP.get("xdd").cloned().unwrap();
-            bot.send_sticker(msg.chat.id, InputFile::file_id(FileId::from(sticker)))
-                .await?;
-        }
-
-        Command::Xpp => {
-            let sticker = STICKER_MAP.get("xpp").cloned().unwrap();
-            bot.send_sticker(msg.chat.id, InputFile::file_id(FileId::from(sticker)))
-                .await?;
-        }
-
-        Command::Ddx => {
-            let sticker = STICKER_MAP.get("ddx").cloned().unwrap();
-            bot.send_sticker(msg.chat.id, InputFile::file_id(FileId::from(sticker)))
-                .await?;
-        }
-
-        Command::XddGarlic => {
-            let sticker = STICKER_MAP.get("xdd_garlic").cloned().unwrap();
-            bot.send_sticker(msg.chat.id, InputFile::file_id(FileId::from(sticker)))
-                .await?;
-        }
-
-        Command::Dxd => {
-            let sticker = STICKER_MAP.get("dxd").cloned().unwrap();
-            bot.send_sticker(msg.chat.id, InputFile::file_id(FileId::from(sticker)))
-                .await?;
-        }
-    };
+        Command::Sticker(raw_sticker_name) => match parse_sticker_name(raw_sticker_name) {
+            Ok(sticker_name) => match STICKERS_MAP.get(sticker_name.as_str()).cloned() {
+                Some(sticker_id) => {
+                    bot.send_sticker(
+                        msg.chat.id,
+                        InputFile::file_id(FileId(sticker_id.to_string())),
+                    )
+                    .await?;
+                }
+                None => {
+                    info!("No sticker with this name found");
+                    bot.send_message(msg.chat.id, "Стикера с таким названием нет")
+                        .await?;
+                }
+            },
+            Err(e) => {
+                info!("failed to parse sticker name {}", e.to_string());
+                bot.send_message(msg.chat.id, e.to_string()).await?;
+            }
+        },
+    }
 
     Ok(())
 }

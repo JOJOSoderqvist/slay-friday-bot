@@ -11,18 +11,8 @@ pub enum Command {
     Help,
     #[command(description = "Показать, сколько осталось до нефорской пятницы.")]
     Friday,
-    #[command(description = "Остановить уведомления.")]
-    Stop,
     #[command(description = "Показать, какая модель сгенерировала сообщние (из последних 10)")]
     Model,
-    #[command(description = "Отправить стикер xdd")]
-    Xdd,
-    #[command(description = "Отправить стикер xpp")]
-    Xpp,
-    #[command(description = "Отправить стикер ddx")]
-    Ddx,
-    #[command(description = "Отправить стикер dxd")]
-    Dxd,
-    #[command(description = "Отправить стикер xddGarlic")]
-    XddGarlic,
+    #[command(description = "Отправить стикер с определенным названием.\nНапример /sticker xdd")]
+    Sticker(String),
 }

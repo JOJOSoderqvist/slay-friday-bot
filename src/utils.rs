@@ -1,5 +1,6 @@
 use chrono::{Datelike, Duration, Utc, Weekday};
 use chrono_tz::Europe::Moscow;
+use teloxide::utils::command::ParseError;
 
 pub fn get_time_until_friday() -> Option<Duration> {
     let now = Utc::now().with_timezone(&Moscow);
@@ -23,4 +24,20 @@ pub fn format_time_delta(td: Duration) -> String {
     let hours = td.num_hours() % 24;
     let minutes = td.num_minutes() % 60;
     format!("{days} дней, {hours} часов, {minutes} минут")
+}
+
+// TODO: Может быть сделать свою ошибку парсинга
+pub fn parse_sticker_name(input: String) -> Result<String, ParseError> {
+    let words: Vec<&str> = input.split_whitespace().collect();
+
+    match words.len() {
+        0 => Err(ParseError::IncorrectFormat(
+            "У этой команды должен быть аргумент".into(),
+        )),
+        1 => Ok(words[0].to_string()),
+
+        n => Err(ParseError::IncorrectFormat(
+            format!("Ожидался один аргумент, получили {n}").into(),
+        )),
+    }
 }

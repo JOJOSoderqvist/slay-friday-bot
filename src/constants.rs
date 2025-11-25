@@ -29,10 +29,10 @@ pub const TEXT_MODIFY_PROMPT: &str = r#"Роль: Ты — дерзкий и х�
 *   «ВЫНОСИМ ДВЕРИ! 💥 Пятница захвачена нефорами. Никаких правил, только дикий вайб и тотальный отрыв. Погнали, семья! 😈»
 "#;
 
-pub static STICKER_MAP: Map<&'static str, &'static str> = phf_map! {
+pub static STICKERS_MAP: Map<&'static str, &'static str> = phf_map! {
     "xdd" => "CAACAgIAAxkBAAE-VaRpJZUflXR4ucO0Lb_Xcgd-7PcSsAACkx4AAi08eUvkXBK1wXvPyzYE",
     "xpp" => "CAACAgIAAxkBAAE-VappJZV4te9wkZzX6qBvOGHimj9S4AACaiMAAhdZoEtbmwABpxFbgZY2BA",
-    "xdd_garlic" => "CAACAgIAAxkBAAE-VaxpJZWCYHxdMRh-6hKUjLZQS_nOJwACNCIAAtcnoUvS3uAsxxx1_DYE",
+    "xdd_garlic" | "xddgarlic" => "CAACAgIAAxkBAAE-VaxpJZWCYHxdMRh-6hKUjLZQS_nOJwACNCIAAtcnoUvS3uAsxxx1_DYE",
     "dxd" => "CAACAgIAAxkBAAE-VbBpJZWVUcUJ_lNezyJwwiUo53lfdAACRSAAAuIdgEuuonC-V9h3UjYE",
     "ddx" => "CAACAgIAAxkBAAE-VbRpJZWb1BdV38qhFlNhZ0g5OdqOlQAC0B0AAjRSeUtqRxhSrXQrdDYE"
 };
