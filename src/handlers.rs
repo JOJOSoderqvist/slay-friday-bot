@@ -1,11 +1,13 @@
 use crate::commands::Command;
 use crate::common::Model;
+use crate::constants::STICKER_MAP;
 use crate::errors::ApiError;
 use crate::utils::{format_time_delta, get_time_until_friday};
 use async_trait::async_trait;
 use log::debug;
 use std::sync::Arc;
 use teloxide::prelude::*;
+use teloxide::types::{FileId, InputFile};
 use teloxide::utils::command::BotCommands;
 use tracing::{error, instrument};
 
@@ -83,6 +85,36 @@ pub async fn handle_command(
 
         Command::Stop => {
             bot.send_message(msg.chat.id, "Отключаю slay-уведомления. 💔")
+                .await?;
+        }
+
+        Command::Xdd => {
+            let sticker = STICKER_MAP.get("xdd").cloned().unwrap();
+            bot.send_sticker(msg.chat.id, InputFile::file_id(FileId::from(sticker)))
+                .await?;
+        }
+
+        Command::Xpp => {
+            let sticker = STICKER_MAP.get("xpp").cloned().unwrap();
+            bot.send_sticker(msg.chat.id, InputFile::file_id(FileId::from(sticker)))
+                .await?;
+        }
+
+        Command::Ddx => {
+            let sticker = STICKER_MAP.get("ddx").cloned().unwrap();
+            bot.send_sticker(msg.chat.id, InputFile::file_id(FileId::from(sticker)))
+                .await?;
+        }
+
+        Command::XddGarlic => {
+            let sticker = STICKER_MAP.get("xdd_garlic").cloned().unwrap();
+            bot.send_sticker(msg.chat.id, InputFile::file_id(FileId::from(sticker)))
+                .await?;
+        }
+
+        Command::Dxd => {
+            let sticker = STICKER_MAP.get("dxd").cloned().unwrap();
+            bot.send_sticker(msg.chat.id, InputFile::file_id(FileId::from(sticker)))
                 .await?;
         }
     };

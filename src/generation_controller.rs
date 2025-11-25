@@ -79,9 +79,9 @@ impl ContentGenerator for GenerationController {
     async fn get_message_info(&self, text: &str) -> Option<Model> {
         let storage_lock = self.storage.lock().await;
 
-        for entry in storage_lock.iter() {
-            if entry.1 == text {
-                return Some(entry.0);
+        for (model, stored_text) in storage_lock.iter() {
+            if stored_text == text {
+                return Some(*model);
             }
         }
 

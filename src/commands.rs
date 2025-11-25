@@ -15,4 +15,14 @@ pub enum Command {
     Stop,
     #[command(description = "Показать, какая модель сгенерировала сообщние (из последних 10)")]
     Model,
+    #[command(description = "Отправить стикер xdd")]
+    Xdd,
+    #[command(description = "Отправить стикер xpp")]
+    Xpp,
+    #[command(description = "Отправить стикер ddx")]
+    Ddx,
+    #[command(description = "Отправить стикер dxd")]
+    Dxd,
+    #[command(description = "Отправить стикер xddGarlic")]
+    XddGarlic,
 }
