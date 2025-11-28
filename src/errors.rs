@@ -49,12 +49,24 @@ pub enum ApiError {
 
     #[error("Sticker already exists")]
     StickerAlreadyExists,
+
+    #[error("Sticker not found")]
+    StickerNotFound,
 }
 
 #[derive(Error, Debug)]
 pub enum RepoError {
     #[error("Failed to open storage file {0}")]
     FailedToOpenFile(#[source] std::io::Error),
+
+    #[error("Failed to write JSON to file {0}")]
+    WriteJSONError(#[source] serde_json::Error),
+
+    #[error("Failed to read JSON from file {0}")]
+    ReadJSONError(#[source] serde_json::Error),
+
+    #[error("Failed to change file {0}")]
+    ChangeFileError(#[source] std::io::Error),
 }
 
 #[derive(Error, Debug)]

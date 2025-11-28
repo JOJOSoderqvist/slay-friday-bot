@@ -34,7 +34,7 @@ pub trait StickerStore: Send + Sync {
     async fn get_sticker(&self, sticker_name: &str) -> Option<StickerEntry>;
     async fn rename_sticker(&self, old_name: &str, new_name: &str) -> Result<(), ApiError>;
     async fn list_stickers(&self) -> Option<Vec<StickerEntry>>;
-    async fn remove_sticker(&self) -> Result<(), ApiError>;
+    async fn remove_sticker(&self, sticker_name: &str) -> Result<(), ApiError>;
 }
 
 pub struct GenerationController<T: MessageStore> {
