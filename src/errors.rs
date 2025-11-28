@@ -43,6 +43,18 @@ pub enum ApiError {
 
     #[error("Failed to generate content with all available models")]
     GenFailed,
+
+    #[error("Repo error {0}")]
+    StorageError(#[from] RepoError),
+
+    #[error("Sticker already exists")]
+    StickerAlreadyExists,
+}
+
+#[derive(Error, Debug)]
+pub enum RepoError {
+    #[error("Failed to open storage file {0}")]
+    FailedToOpenFile(#[source] std::io::Error),
 }
 
 #[derive(Error, Debug)]

@@ -8,6 +8,7 @@ mod gigachat_api;
 mod grok_api;
 mod handlers;
 mod mistral_api;
+mod repo;
 mod utils;
 
 use crate::commands::Command;

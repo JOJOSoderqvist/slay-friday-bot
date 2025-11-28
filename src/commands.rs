@@ -16,5 +16,5 @@ pub enum Command {
     #[command(description = "Отправить стикер с определенным названием.\nНапример /sticker xdd")]
     Sticker(String),
     #[command(rename = "list_stickers", description = "Показать доступные стикеры")]
-    ListStickers
+    ListStickers,
 }

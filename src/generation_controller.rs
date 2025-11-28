@@ -2,11 +2,12 @@ use crate::common::Model;
 use crate::errors::ApiError;
 use crate::errors::ApiError::{GenFailed, NoModels};
 use crate::handlers::ContentGenerator;
+use crate::repo::message_history_storage::HistoryEntry;
+use crate::repo::sticker_storage::dto::StickerEntry;
 use async_trait::async_trait;
 use rand::seq::SliceRandom;
-use std::collections::VecDeque;
+use std::error::Error;
 use std::sync::Arc;
-use tokio::sync::Mutex;
 use tracing::error;
 use tracing::instrument;
 
@@ -19,33 +20,36 @@ pub trait ContentRephraser: Send + Sync {
     fn get_model_name(&self) -> Model;
 }
 
-pub struct GenerationController {
-    pub models: ModelPool,
-    storage: Mutex<VecDeque<(Model, String)>>,
+#[async_trait]
+pub trait MessageStore: Send + Sync {
+    async fn add_message(&self, message: HistoryEntry);
+    async fn get_message_info(&self, message: &str) -> Option<Model>;
 }
-impl GenerationController {
-    pub fn new(models: ModelPool) -> Self {
-        let mut storage: VecDeque<(Model, String)> = VecDeque::new();
-        storage.reserve(10);
 
-        GenerationController {
-            models,
-            storage: Mutex::new(storage),
-        }
-    }
+#[async_trait]
+pub trait StickerStore: Send + Sync {
+    // TODO: error type?
+    async fn add_sticker(&self, sticker: StickerEntry) -> Result<(), ApiError>;
+    // Option??
+    async fn get_sticker(&self, sticker_name: &str) -> Option<StickerEntry>;
+    async fn rename_sticker(&self, old_name: &str, new_name: &str) -> Result<(), ApiError>;
+    async fn list_stickers(&self) -> Option<Vec<StickerEntry>>;
+    async fn remove_sticker(&self) -> Result<(), ApiError>;
+}
 
-    async fn add_storage_entry(&self, model: Model, text: &str) {
-        let mut storage_lock = self.storage.lock().await;
-        if storage_lock.len() == 10 {
-            storage_lock.pop_front();
-        }
+pub struct GenerationController<T: MessageStore> {
+    pub models: ModelPool,
+    storage: T,
+}
 
-        storage_lock.push_back((model, text.to_string()));
+impl<T: MessageStore> GenerationController<T> {
+    pub fn new(models: ModelPool, storage: T) -> Self {
+        GenerationController { models, storage }
     }
 }
 
 #[async_trait]
-impl ContentGenerator for GenerationController {
+impl<T: MessageStore> ContentGenerator for GenerationController<T> {
     #[instrument(skip(self, current_text), err)]
     async fn generate_text(&self, current_text: &str) -> Result<String, ApiError> {
         if self.models.is_empty() {
@@ -60,7 +64,9 @@ impl ContentGenerator for GenerationController {
             match sh.rephrase_text(current_text).await {
                 Ok(new_text) => {
                     let model_name = sh.get_model_name();
-                    self.add_storage_entry(model_name, new_text.as_str()).await;
+                    self.storage
+                        .add_message(HistoryEntry::new(model_name, current_text.to_string()))
+                        .await;
 
                     return Ok(new_text);
                 }
@@ -76,15 +82,8 @@ impl ContentGenerator for GenerationController {
         Err(GenFailed)
     }
 
+    // TODO: Cringe
     async fn get_message_info(&self, text: &str) -> Option<Model> {
-        let storage_lock = self.storage.lock().await;
-
-        for (model, stored_text) in storage_lock.iter() {
-            if stored_text == text {
-                return Some(*model);
-            }
-        }
-
-        None
+        return self.storage.get_message_info(text).await;
     }
 }
