@@ -38,7 +38,9 @@ impl StickerStorage {
 
     async fn get_stickers(file: &mut File) -> Result<Vec<StickerEntry>, RepoError> {
         let mut stickers_string = String::new();
-        file.read_to_string(&mut stickers_string).await.map_err(FailedToOpenFile)?;
+        file.read_to_string(&mut stickers_string)
+            .await
+            .map_err(FailedToOpenFile)?;
         let stickers: Vec<StickerEntry> =
             serde_json::from_str(stickers_string.as_str()).map_err(ReadJSONError)?;
         Ok(stickers)
@@ -94,7 +96,10 @@ impl StickerStore for StickerStorage {
         {
             let mut file_lock = self.storage.lock().await;
             let mut stickers = StickerStorage::get_stickers(&mut file_lock).await?;
-            if let Some(sticker) = stickers.iter_mut().find(|sticker| sticker.name == old_name) {
+            if let Some(sticker) = stickers
+                .iter_mut()
+                .find(|sticker| sticker.name == old_name)
+            {
                 sticker.name = new_name.to_string();
                 StickerStorage::write_stickers(&mut file_lock, stickers).await?;
             } else {
