@@ -1,3 +1,7 @@
+networks:
+  common-network:
+    external: true
+
 services:
   slayfridaybot:
     build:
@@ -10,4 +14,6 @@ services:
       - RUST_LOG=info
     volumes:
       - ./sticker_storage.json:/app/sticker_storage.json
+    networks:
+      - common-network
     restart: unless-stopped
