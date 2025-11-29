@@ -59,6 +59,9 @@ pub enum RepoError {
     #[error("Failed to open storage file {0}")]
     FailedToOpenFile(#[source] std::io::Error),
 
+    #[error("Failed to read file {0}")]
+    FailedToReadFile(#[source] std::io::Error),
+
     #[error("Failed to write JSON to file {0}")]
     WriteJSONError(#[source] serde_json::Error),
 
