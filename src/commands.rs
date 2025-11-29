@@ -13,9 +13,10 @@ pub enum Command {
     Friday,
     #[command(description = "Показать, какая модель сгенерировала сообщние (из последних 10)")]
     Model,
-    #[command(description = "Отправить стикер с определенным названием.\nНапример /sticker xdd")]
+    #[command(description = "Отправить стикер с определенным названием.\nНапример, /sticker xdd или /get xdd",
+    aliases = ["get"])]
     Sticker(String),
-    #[command(rename = "list_stickers", description = "Показать доступные стикеры")]
+    #[command(rename = "list_stickers", description = "Показать доступные стикеры", aliases = ["list"])]
     ListStickers,
 
     #[command(rename="add_sticker", description = "Добавляет новый стикер.\nНапример, /add_sticker xdd или /add xdd.",
