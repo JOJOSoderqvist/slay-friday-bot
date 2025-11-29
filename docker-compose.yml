@@ -8,4 +8,6 @@ services:
       - .env
     environment:
       - RUST_LOG=info
+    volumes:
+      - ./sticker_storage.json:/app/sticker_storage.json
     restart: unless-stopped
