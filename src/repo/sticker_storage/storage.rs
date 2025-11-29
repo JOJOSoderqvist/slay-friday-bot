@@ -10,7 +10,7 @@ use crate::errors::RepoError::{
     ChangeFileError, FailedToOpenFile, FailedToReadFile, ReadJSONError, WriteJSONError,
 };
 use crate::errors::{ApiError, RepoError};
-use crate::generation_controller::StickerStore;
+use crate::handlers::StickerStore;
 use crate::repo::sticker_storage::dto::StickerEntry;
 
 pub struct StickerStorage {

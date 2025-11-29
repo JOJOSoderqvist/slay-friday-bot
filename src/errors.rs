@@ -1,5 +1,7 @@
 use crate::common::Model;
 use std::env::VarError;
+use teloxide::RequestError;
+use teloxide::dispatching::dialogue::InMemStorageError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -52,6 +54,12 @@ pub enum ApiError {
 
     #[error("Sticker not found")]
     StickerNotFound,
+
+    #[error("Telegram API error: {0}")]
+    TelegramError(#[from] RequestError),
+
+    #[error("Dialogue storage error: {0}")]
+    DialogueStorageError(#[from] InMemStorageError),
 }
 
 #[derive(Error, Debug)]

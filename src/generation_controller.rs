@@ -26,30 +26,19 @@ pub trait MessageStore: Send + Sync {
     async fn get_message_info(&self, message: &str) -> Option<Model>;
 }
 
-#[async_trait]
-pub trait StickerStore: Send + Sync {
-    // TODO: error type?
-    async fn add_sticker(&self, sticker: StickerEntry) -> Result<(), ApiError>;
-    // Option??
-    async fn get_sticker(&self, sticker_name: &str) -> Option<StickerEntry>;
-    async fn rename_sticker(&self, old_name: &str, new_name: &str) -> Result<(), ApiError>;
-    async fn list_stickers(&self) -> Option<Vec<StickerEntry>>;
-    async fn remove_sticker(&self, sticker_name: &str) -> Result<(), ApiError>;
-}
-
-pub struct GenerationController<T: MessageStore> {
+pub struct GenerationController {
     pub models: ModelPool,
-    storage: T,
+    pub storage: Arc<dyn MessageStore>,
 }
 
-impl<T: MessageStore> GenerationController<T> {
-    pub fn new(models: ModelPool, storage: T) -> Self {
+impl GenerationController {
+    pub fn new(models: ModelPool, storage: Arc<dyn MessageStore>) -> Self {
         GenerationController { models, storage }
     }
 }
 
 #[async_trait]
-impl<T: MessageStore> ContentGenerator for GenerationController<T> {
+impl ContentGenerator for GenerationController {
     #[instrument(skip(self, current_text), err)]
     async fn generate_text(&self, current_text: &str) -> Result<String, ApiError> {
         if self.models.is_empty() {
@@ -84,6 +73,6 @@ impl<T: MessageStore> ContentGenerator for GenerationController<T> {
 
     // TODO: Cringe
     async fn get_message_info(&self, text: &str) -> Option<Model> {
-        return self.storage.get_message_info(text).await;
+        self.storage.get_message_info(text).await
     }
 }

@@ -1,10 +1,12 @@
 use std::collections::VecDeque;
 
 use async_trait::async_trait;
-use tokio::sync::Mutex;
+use teloxide::types::MediaKind::Poll;
+use tokio::sync::{Mutex, RwLock};
 
 use crate::{common::Model, generation_controller::MessageStore};
 
+const HISTORY_STORAGE_SIZE: usize = 20;
 pub struct HistoryEntry {
     model: Model,
     message: String,
@@ -17,16 +19,16 @@ impl HistoryEntry {
 }
 
 pub struct MessageHistoryStorage {
-    storage: Mutex<VecDeque<HistoryEntry>>,
+    storage: RwLock<VecDeque<HistoryEntry>>,
 }
 
 impl MessageHistoryStorage {
     pub fn new() -> Self {
         let mut storage: VecDeque<HistoryEntry> = VecDeque::new();
-        storage.reserve(10);
+        storage.reserve(HISTORY_STORAGE_SIZE);
 
         MessageHistoryStorage {
-            storage: Mutex::new(storage),
+            storage: RwLock::new(storage),
         }
     }
 }
@@ -34,21 +36,20 @@ impl MessageHistoryStorage {
 #[async_trait]
 impl MessageStore for MessageHistoryStorage {
     async fn add_message(&self, message: HistoryEntry) {
-        let mut storage_lock = self.storage.lock().await;
-        if storage_lock.len() == 10 {
-            storage_lock.pop_front();
+        let mut storage = self.storage.write().await;
+
+        if storage.len() == HISTORY_STORAGE_SIZE {
+            storage.pop_front();
         }
 
-        storage_lock.push_back(message);
+        storage.push_back(message);
     }
 
     async fn get_message_info(&self, message: &str) -> Option<Model> {
-        let storage_lock = self.storage.lock().await;
+        let storage = self.storage.read().await;
 
-        for entry in storage_lock.iter() {
-            if entry.message == message {
-                return Some(entry.model);
-            }
+        if let Some(entry) = storage.iter().find(|entry| entry.message == message) {
+            return Some(entry.model);
         }
 
         None
