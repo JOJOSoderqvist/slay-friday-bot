@@ -27,6 +27,10 @@ pub enum Command {
     aliases = ["rename"])]
     RenameSticker(String),
 
+    #[command(rename="delete_sticker", description = "Удаляет существующий стикер.\nНапример, /delete_sticker xdd или /delete xdd.",
+    aliases = ["delete", "remove_sticker", "remove"])]
+    DeleteSticker(String),
+
     #[command(description = "Отмена операции в рамках диалога")]
     Cancel,
 }

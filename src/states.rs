@@ -7,5 +7,5 @@ pub enum State {
     },
     ReceiveNewName {
         old_name: String,
-    }
+    },
 }

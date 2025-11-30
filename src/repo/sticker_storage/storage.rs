@@ -16,7 +16,6 @@ use crate::repo::sticker_storage::dto::StickerEntry;
 pub struct StickerStorage {
     storage: Mutex<File>,
     cache: RwLock<HashMap<String, String>>,
-    filename: String,
 }
 
 impl StickerStorage {
@@ -55,7 +54,6 @@ impl StickerStorage {
         Ok(StickerStorage {
             storage: Mutex::new(file),
             cache: RwLock::new(cache),
-            filename,
         })
     }
 
@@ -174,7 +172,7 @@ impl StickerStore for StickerStorage {
         let cache = self.cache.read().await;
 
         if cache.get(sticker_name).is_some() {
-            return true
+            return true;
         }
 
         false

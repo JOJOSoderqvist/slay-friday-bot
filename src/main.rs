@@ -88,32 +88,26 @@ async fn main() {
 
     subscriber.init();
 
-
     type MyDialogue = Dialogue<State, InMemStorage<State>>;
-    let handler = dptree::entry()
-        .branch(
-            Update::filter_message()
-                .enter_dialogue::<Message, InMemStorage<State>, State>()
+    let handler = dptree::entry().branch(
+        Update::filter_message()
+            .enter_dialogue::<Message, InMemStorage<State>, State>()
+            .branch(
+                dptree::entry()
+                    .filter_command::<Command>()
+                    .endpoint(handle_command),
+            )
+            .branch(
+                dptree::filter_map_async(|dialogue: MyDialogue| async move {
+                    dialogue.get().await.ok().flatten()
+                })
+                .branch(case![State::ReceiveSticker { name }].endpoint(handlers::receive_sticker))
                 .branch(
-                    dptree::entry()
-                        .filter_command::<Command>()
-                        .endpoint(handle_command),
-                )
-                .branch(
-                    dptree::filter_map_async(|dialogue: MyDialogue| async move {
-                        dialogue.get().await.ok().flatten()
-                    })
-                        .branch(
-                            case![State::ReceiveSticker { name }]
-                                .endpoint(handlers::receive_sticker),
-                        )
-                        .branch(
-                            case![State::ReceiveNewName {old_name}]
-                                .endpoint(handlers::receive_new_sticker_name)
-                        ),
-
+                    case![State::ReceiveNewName { old_name }]
+                        .endpoint(handlers::receive_new_sticker_name),
                 ),
-        );
+            ),
+    );
 
     Dispatcher::builder(bot, handler)
         .dependencies(dptree::deps![

@@ -1,19 +1,17 @@
 use crate::commands::Command;
 use crate::common::Model;
-use crate::constants::STICKERS_MAP;
 use crate::errors::ApiError;
-use crate::errors::ApiError::{DialogueStorageError, StickerAlreadyExists, TelegramError};
+use crate::errors::ApiError::{DialogueStorageError, StickerAlreadyExists};
 use crate::repo::sticker_storage::dto::StickerEntry;
 use crate::states::State;
-use crate::utils::{format_time_delta, get_time_until_friday, parse_sticker_name};
+use crate::utils::{format_time_delta, get_time_until_friday};
 use async_trait::async_trait;
 use log::{debug, info};
 use std::sync::Arc;
 use teloxide::dispatching::dialogue::InMemStorage;
 use teloxide::prelude::*;
-use teloxide::types::{FileId, InputFile};
+use teloxide::types::{FileId, InputFile, ParseMode};
 use teloxide::utils::command::BotCommands;
-use tracing::field::debug;
 use tracing::{error, instrument};
 
 #[async_trait]
@@ -53,13 +51,21 @@ pub async fn handle_command(
 
         Command::ListStickers => handle_list_stickers(bot, msg, sticker_store).await?,
 
-        Command::AddSticker(name) => handle_add_sticker_command(bot, msg, dialogue, name, sticker_store).await?,
+        Command::AddSticker(name) => {
+            handle_add_sticker(bot, msg, dialogue, name, sticker_store).await?
+        }
 
         Command::Cancel => handle_cancel(bot, msg, dialogue).await?,
 
         Command::Sticker(name) => handle_get_sticker(bot, msg, name, sticker_store).await?,
 
-        Command::RenameSticker(old_name) => handle_rename_command(bot, msg, dialogue, old_name, sticker_store).await?,
+        Command::RenameSticker(old_name) => {
+            handle_rename(bot, msg, dialogue, old_name, sticker_store).await?
+        }
+
+        Command::DeleteSticker(name) => {
+            handle_delete_sticker(bot, msg, name, sticker_store).await?
+        }
     }
 
     Ok(())
@@ -148,6 +154,12 @@ async fn handle_get_sticker(
     sticker_name: String,
     sticker_store: Arc<dyn StickerStore>,
 ) -> Result<(), ApiError> {
+    if sticker_name.trim().is_empty() {
+        bot.send_message(msg.chat.id, "Укажите имя стикера".to_string())
+            .await?;
+        return Ok(());
+    }
+
     match sticker_store.get_sticker(sticker_name.as_str()).await {
         Some(entry) => {
             bot.send_sticker(msg.chat.id, InputFile::file_id(FileId(entry.file_id)))
@@ -170,12 +182,19 @@ async fn handle_list_stickers(
 ) -> Result<(), ApiError> {
     match sticker_store.list_stickers().await {
         Some(entries) => {
-            let names: Vec<String> = entries.into_iter().map(|e| e.name).collect();
+            let mut names: Vec<String> = entries.into_iter().map(|e| e.name).collect();
+
+            names.sort();
+
+            names.iter_mut().for_each(|name| {
+                *name = format!("`{name}`");
+            });
 
             bot.send_message(
                 msg.chat.id,
                 format!("Доступные стикеры:\n{}", names.join("\n")),
             )
+            .parse_mode(ParseMode::MarkdownV2)
             .await?;
         }
         None => {
@@ -191,12 +210,12 @@ async fn handle_list_stickers(
 type MyDialogue = Dialogue<State, InMemStorage<State>>;
 
 #[instrument(skip(bot, msg, dialogue, sticker_name, sticker_store))]
-async fn handle_add_sticker_command(
+async fn handle_add_sticker(
     bot: Bot,
     msg: Message,
     dialogue: MyDialogue,
     sticker_name: String,
-    sticker_store: Arc<dyn StickerStore>
+    sticker_store: Arc<dyn StickerStore>,
 ) -> Result<(), ApiError> {
     if sticker_name.trim().is_empty() {
         bot.send_message(msg.chat.id, "Пожалуйста, укажите название: /add <name>")
@@ -204,11 +223,19 @@ async fn handle_add_sticker_command(
         return Ok(());
     }
 
-    if sticker_store.is_already_created(sticker_name.as_str()).await {
+    if sticker_store
+        .is_already_created(sticker_name.as_str())
+        .await
+    {
         bot.send_message(
             msg.chat.id,
-            format!("Стикер с именем {} уже существует, попробуй другое", sticker_name)).await?;
-        return Ok(())
+            format!(
+                "Стикер с именем {} уже существует, попробуй другое",
+                sticker_name
+            ),
+        )
+        .await?;
+        return Ok(());
     };
 
     bot.send_message(
@@ -231,6 +258,7 @@ async fn handle_cancel(bot: Bot, msg: Message, dialogue: MyDialogue) -> Result<(
     Ok(())
 }
 
+#[instrument(skip(bot, msg, dialogue, name, sticker_store))]
 pub async fn receive_sticker(
     bot: Bot,
     msg: Message,
@@ -261,8 +289,11 @@ pub async fn receive_sticker(
             Err(e) => {
                 error!(err = %e, "Failed to handle sticker creation");
 
-                bot.send_message(msg.chat.id, format!("Произошла ошибка сохранения стикера: {}", e))
-                    .await?;
+                bot.send_message(
+                    msg.chat.id,
+                    format!("Произошла ошибка сохранения стикера: {}", e),
+                )
+                .await?;
                 dialogue.exit().await?;
             }
         }
@@ -276,34 +307,44 @@ pub async fn receive_sticker(
 }
 
 #[instrument(skip(bot, msg, dialogue, sticker_name, sticker_store))]
-async fn handle_rename_command(
+async fn handle_rename(
     bot: Bot,
     msg: Message,
     dialogue: MyDialogue,
     sticker_name: String,
-    sticker_store: Arc<dyn StickerStore>
+    sticker_store: Arc<dyn StickerStore>,
 ) -> Result<(), ApiError> {
     if sticker_name.trim().is_empty() {
-        bot.send_message(msg.chat.id, "Пожалуйста, укажите название: /add <name>")
+        bot.send_message(msg.chat.id, "Пожалуйста, укажите название")
             .await?;
         return Ok(());
     }
 
-    if !sticker_store.is_already_created(sticker_name.as_str()).await {
+    if !sticker_store
+        .is_already_created(sticker_name.as_str())
+        .await
+    {
         bot.send_message(
             msg.chat.id,
-            format!("Стикер с именем {} не существует, попробуй другое", sticker_name)).await?;
-        return Ok(())
+            format!(
+                "Стикер с именем {} не существует, попробуй другое",
+                sticker_name
+            ),
+        )
+        .await?;
+        return Ok(());
     };
 
     bot.send_message(
         msg.chat.id,
         format!("Отправь новое имя для стикера '{}'", sticker_name),
     )
-        .await?;
+    .await?;
 
     dialogue
-        .update(State::ReceiveNewName { old_name: sticker_name} )
+        .update(State::ReceiveNewName {
+            old_name: sticker_name,
+        })
         .await
         .map_err(DialogueStorageError)?;
 
@@ -320,27 +361,31 @@ pub async fn receive_new_sticker_name(
     let new_sticker_name = if let Some(name) = msg.text() {
         name
     } else {
-        bot.send_message(
-            msg.chat.id,
-            "Это сообщение - не текст".to_string()).await?;
+        bot.send_message(msg.chat.id, "Это сообщение - не текст".to_string())
+            .await?;
 
         dialogue.exit().await?;
-        return Ok(())
+        return Ok(());
     };
 
     if new_sticker_name.trim().is_empty() {
-        bot.send_message(
-            msg.chat.id,
-            "Пожалуйста, укажите название".to_string()).await?;
+        bot.send_message(msg.chat.id, "Пожалуйста, укажите название".to_string())
+            .await?;
 
         dialogue.exit().await?;
-        return Ok(())
+        return Ok(());
     }
 
-    match sticker_store.rename_sticker(old_sticker_name.as_str(), new_sticker_name).await {
+    match sticker_store
+        .rename_sticker(old_sticker_name.as_str(), new_sticker_name)
+        .await
+    {
         Ok(_) => {
-            bot.send_message(msg.chat.id, format!("Новое имя '{}' сохранено! 🎉", new_sticker_name))
-                .await?;
+            bot.send_message(
+                msg.chat.id,
+                format!("Новое имя '{}' сохранено! 🎉", new_sticker_name),
+            )
+            .await?;
             dialogue.exit().await?;
         }
 
@@ -348,19 +393,65 @@ pub async fn receive_new_sticker_name(
             info!("Sticker with name {} already exists", new_sticker_name);
             bot.send_message(
                 msg.chat.id,
-                format!("Стикер с именем {} уже существует, попробуй другое", new_sticker_name)).await?;
+                format!(
+                    "Стикер с именем {} уже существует, попробуй другое",
+                    new_sticker_name
+                ),
+            )
+            .await?;
 
             dialogue.exit().await?;
         }
 
         Err(e) => {
             error!(err = %e, "Failed to handle sticker renae");
-            bot.send_message(
-                msg.chat.id,
-                format!("Произошла неизвестная ошибка {}", e)).await?;
+            bot.send_message(msg.chat.id, format!("Произошла неизвестная ошибка {}", e))
+                .await?;
 
             dialogue.exit().await?;
+        }
+    }
 
+    Ok(())
+}
+#[instrument(skip(bot, msg, sticker_store))]
+pub async fn handle_delete_sticker(
+    bot: Bot,
+    msg: Message,
+    sticker_name: String,
+    sticker_store: Arc<dyn StickerStore>,
+) -> Result<(), ApiError> {
+    if sticker_name.trim().is_empty() {
+        bot.send_message(msg.chat.id, "Пожалуйста, укажите название стикера")
+            .await?;
+        return Ok(());
+    }
+
+    match sticker_store.remove_sticker(sticker_name.as_str()).await {
+        Ok(_) => {
+            bot.send_message(
+                msg.chat.id,
+                format!("Стикер {} успешно удален", sticker_name),
+            )
+            .await?;
+        }
+
+        Err(ApiError::StickerNotFound) => {
+            bot.send_message(
+                msg.chat.id,
+                format!("Стикер с названием {} не найден", sticker_name),
+            )
+            .await?;
+        }
+
+        Err(e) => {
+            error!(err = %e, "Failed to handle sticker deletion");
+
+            bot.send_message(
+                msg.chat.id,
+                format!("Произошла ошибка удаления стикера: {}", e),
+            )
+            .await?;
         }
     }
 
