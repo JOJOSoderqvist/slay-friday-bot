@@ -26,6 +26,7 @@ impl StickerStorage {
             .read(true)
             .write(true)
             .create(true)
+            .truncate(false)
             .open(filename.as_str())
             .await
             .map_err(FailedToOpenFile)?;
@@ -101,7 +102,7 @@ impl StickerStore for StickerStorage {
         if let Err(e) = self.persist_cache(&cache).await {
             cache.remove(sticker.name.as_str());
 
-            return Err(e).map_err(StorageError);
+            return Err(StorageError(e));
         }
 
         Ok(())
@@ -131,7 +132,7 @@ impl StickerStore for StickerStorage {
                 cache.remove(new_name);
                 cache.insert(old_name.to_string(), file_id);
 
-                return Err(e).map_err(StorageError);
+                return Err(StorageError(e));
             }
         }
 
@@ -159,7 +160,7 @@ impl StickerStore for StickerStorage {
                 if let Err(e) = self.persist_cache(&cache).await {
                     cache.insert(sticker_name.to_string(), file_id);
 
-                    return Err(e).map_err(StorageError);
+                    return Err(StorageError(e));
                 }
 
                 Ok(())
@@ -167,5 +168,15 @@ impl StickerStore for StickerStorage {
 
             None => Err(StickerNotFound),
         }
+    }
+
+    async fn is_already_created(&self, sticker_name: &str) -> bool {
+        let cache = self.cache.read().await;
+
+        if cache.get(sticker_name).is_some() {
+            return true
+        }
+
+        false
     }
 }

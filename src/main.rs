@@ -106,7 +106,12 @@ async fn main() {
                         .branch(
                             case![State::ReceiveSticker { name }]
                                 .endpoint(handlers::receive_sticker),
+                        )
+                        .branch(
+                            case![State::ReceiveNewName {old_name}]
+                                .endpoint(handlers::receive_new_sticker_name)
                         ),
+
                 ),
         );
 
@@ -117,6 +122,7 @@ async fn main() {
             InMemStorage::<State>::new()
         ])
         .enable_ctrlc_handler()
+        .default_handler(|_upd| async {})
         .build()
         .dispatch()
         .await;

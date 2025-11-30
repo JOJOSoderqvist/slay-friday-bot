@@ -23,6 +23,10 @@ pub enum Command {
     aliases = ["add"])]
     AddSticker(String),
 
+    #[command(rename="rename_sticker", description = "Переименовывает существующий стикер.\nНапример, /rename_sticker xdd или /rename xdd.",
+    aliases = ["rename"])]
+    RenameSticker(String),
+
     #[command(description = "Отмена операции в рамках диалога")]
     Cancel,
 }

@@ -5,4 +5,7 @@ pub enum State {
     ReceiveSticker {
         name: String,
     },
+    ReceiveNewName {
+        old_name: String,
+    }
 }
