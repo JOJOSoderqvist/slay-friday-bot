@@ -17,28 +17,20 @@ pub trait ContentRephraser: Send + Sync {
 
     fn get_model_name(&self) -> Model;
 }
-
-#[async_trait]
-pub trait MessageStore: Send + Sync {
-    async fn add_message(&self, message: HistoryEntry);
-    async fn get_message_info(&self, message: &str) -> Option<Model>;
-}
-
 pub struct GenerationController {
     pub models: ModelPool,
-    pub storage: Arc<dyn MessageStore>,
 }
 
 impl GenerationController {
-    pub fn new(models: ModelPool, storage: Arc<dyn MessageStore>) -> Self {
-        GenerationController { models, storage }
+    pub fn new(models: ModelPool) -> Self {
+        GenerationController { models }
     }
 }
 
 #[async_trait]
 impl ContentGenerator for GenerationController {
     #[instrument(skip(self, current_text), err)]
-    async fn generate_text(&self, current_text: &str) -> Result<String, ApiError> {
+    async fn generate_text(&self, current_text: &str) -> Result<(String, Model), ApiError> {
         if self.models.is_empty() {
             error!("no models were provided");
             return Err(NoModels);
@@ -50,12 +42,7 @@ impl ContentGenerator for GenerationController {
         for sh in local_models {
             match sh.rephrase_text(current_text).await {
                 Ok(new_text) => {
-                    let model_name = sh.get_model_name();
-                    self.storage
-                        .add_message(HistoryEntry::new(model_name, current_text.to_string()))
-                        .await;
-
-                    return Ok(new_text);
+                    return Ok((new_text, sh.get_model_name()));
                 }
 
                 Err(err) => {
@@ -67,10 +54,5 @@ impl ContentGenerator for GenerationController {
 
         error!("Generation with all models has failed");
         Err(GenFailed)
-    }
-
-    // TODO: Cringe
-    async fn get_message_info(&self, text: &str) -> Option<Model> {
-        self.storage.get_message_info(text).await
     }
 }

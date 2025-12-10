@@ -3,7 +3,8 @@ use std::collections::VecDeque;
 use async_trait::async_trait;
 use tokio::sync::RwLock;
 
-use crate::{common::Model, generation_controller::MessageStore};
+use crate::{common::Model};
+use crate::handlers::MessageStore;
 
 const HISTORY_STORAGE_SIZE: usize = 20;
 pub struct HistoryEntry {

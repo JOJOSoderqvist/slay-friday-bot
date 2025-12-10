@@ -15,11 +15,11 @@ mod utils;
 use crate::commands::Command;
 use crate::config::BotConfig;
 use crate::generation_controller::{
-    ContentRephraser, GenerationController, MessageStore, ModelPool,
+    ContentRephraser, GenerationController, ModelPool,
 };
 use crate::gigachat_api::api::GigaChatApi;
 use crate::grok_api::api::GrokApi;
-use crate::handlers::{ContentGenerator, StickerStore, handle_command};
+use crate::handlers::{ContentGenerator, StickerStore, handle_command, MessageStore};
 use crate::mistral_api::api::MistralApi;
 use crate::repo::message_history_storage::MessageHistoryStorage;
 use crate::repo::sticker_storage::storage::StickerStorage;
@@ -79,7 +79,6 @@ async fn main() {
 
     let generation_controller = Arc::new(GenerationController::new(
         model_pool,
-        message_history_storage,
     )) as Arc<dyn ContentGenerator>;
 
     let subscriber = tracing_subscriber::registry()
@@ -113,6 +112,7 @@ async fn main() {
         .dependencies(dptree::deps![
             generation_controller,
             sticker_storage,
+            message_history_storage,
             InMemStorage::<State>::new()
         ])
         .enable_ctrlc_handler()

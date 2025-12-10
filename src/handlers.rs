@@ -13,13 +13,20 @@ use teloxide::prelude::*;
 use teloxide::types::{FileId, InputFile, ParseMode};
 use teloxide::utils::command::BotCommands;
 use tracing::{error, instrument};
+use crate::repo::message_history_storage::HistoryEntry;
 
 #[async_trait]
 pub trait ContentGenerator: Send + Sync {
-    async fn generate_text(&self, current_text: &str) -> Result<String, ApiError>;
+    async fn generate_text(&self, current_text: &str) -> Result<(String, Model), ApiError>;
 
-    async fn get_message_info(&self, text: &str) -> Option<Model>;
 }
+
+#[async_trait]
+pub trait MessageStore: Send + Sync {
+    async fn add_message(&self, message: HistoryEntry);
+    async fn get_message_info(&self, message: &str) -> Option<Model>;
+}
+
 
 #[async_trait]
 pub trait StickerStore: Send + Sync {
@@ -33,21 +40,22 @@ pub trait StickerStore: Send + Sync {
     async fn is_already_created(&self, sticker_name: &str) -> bool;
 }
 
-#[instrument(skip(bot, generator, cmd, msg, sticker_store, dialogue))]
+#[instrument(skip(bot, generator, cmd, msg, sticker_store, message_store, dialogue))]
 pub async fn handle_command(
     bot: Bot,
     msg: Message,
     cmd: Command,
     generator: Arc<dyn ContentGenerator>,
     sticker_store: Arc<dyn StickerStore>,
+    message_store: Arc<dyn MessageStore>,
     dialogue: MyDialogue,
 ) -> Result<(), ApiError> {
     match cmd {
         Command::Help => handle_help(bot, msg).await?,
 
-        Command::Friday => handle_friday(bot, msg, generator).await?,
+        Command::Friday => handle_friday(bot, msg, generator, message_store).await?,
 
-        Command::Model => handle_model_info(bot, msg, generator).await?,
+        Command::Model => handle_model_info(bot, msg, message_store).await?,
 
         Command::ListStickers => handle_list_stickers(bot, msg, sticker_store).await?,
 
@@ -79,11 +87,12 @@ async fn handle_help(bot: Bot, msg: Message) -> Result<(), ApiError> {
     Ok(())
 }
 
-#[instrument(skip(bot, msg, generator))]
+#[instrument(skip(bot, msg, generator, store))]
 async fn handle_friday(
     bot: Bot,
     msg: Message,
     generator: Arc<dyn ContentGenerator>,
+    store: Arc<dyn MessageStore>,
 ) -> Result<(), ApiError> {
     let text = if let Some(time_left) = get_time_until_friday() {
         format!(
@@ -95,7 +104,9 @@ async fn handle_friday(
     };
 
     match generator.generate_text(text.as_str()).await {
-        Ok(new_text) => {
+        Ok((new_text, model_name)) => {
+            store.add_message(HistoryEntry::new(model_name, new_text.clone())).await;
+
             bot.send_message(msg.chat.id, new_text).await?;
         }
         Err(err) => {
@@ -110,7 +121,7 @@ async fn handle_friday(
 async fn handle_model_info(
     bot: Bot,
     msg: Message,
-    generator: Arc<dyn ContentGenerator>,
+    store: Arc<dyn MessageStore>,
 ) -> Result<(), ApiError> {
     let reply_msg = match msg.reply_to_message() {
         Some(m) => m,
@@ -130,7 +141,7 @@ async fn handle_model_info(
         }
     };
 
-    match generator.get_message_info(text).await {
+    match store.get_message_info(text).await {
         Some(model) => {
             bot.send_message(
                 msg.chat.id,
