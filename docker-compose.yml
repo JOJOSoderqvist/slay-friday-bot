@@ -1,6 +1,6 @@
 networks:
-  common-network:
-    external: true
+  slay-network:
+    driver: bridge
 
 services:
   slayfridaybot:
@@ -15,5 +15,19 @@ services:
     volumes:
       - ./sticker_storage.json:/app/sticker_storage.json
     networks:
-      - common-network
+      - slay-network
     restart: unless-stopped
+    depends_on:
+      - xray-proxy
+
+  xray-proxy:
+    image: teddysun/xray:latest
+    container_name: xray-proxy
+    command: [ "xray", "run", "-c", "/etc/xray/config.json" ]
+    volumes:
+      - ./xray-config.json:/etc/xray/config.json:ro
+    ports:
+      - "8100:8100"
+    restart: unless-stopped
+    networks:
+      - slay-network
