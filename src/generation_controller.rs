@@ -2,7 +2,6 @@ use crate::common::Model;
 use crate::errors::ApiError;
 use crate::errors::ApiError::{GenFailed, NoModels};
 use crate::handlers::ContentGenerator;
-use crate::repo::message_history_storage::HistoryEntry;
 use async_trait::async_trait;
 use rand::seq::SliceRandom;
 use std::sync::Arc;

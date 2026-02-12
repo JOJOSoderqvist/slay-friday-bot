@@ -2,6 +2,7 @@ use crate::commands::Command;
 use crate::common::Model;
 use crate::errors::ApiError;
 use crate::errors::ApiError::{DialogueStorageError, StickerAlreadyExists};
+use crate::repo::message_history_storage::HistoryEntry;
 use crate::repo::sticker_storage::dto::StickerEntry;
 use crate::states::State;
 use crate::utils::{format_time_delta, get_time_until_friday};
@@ -13,12 +14,10 @@ use teloxide::prelude::*;
 use teloxide::types::{FileId, InputFile, ParseMode};
 use teloxide::utils::command::BotCommands;
 use tracing::{error, instrument};
-use crate::repo::message_history_storage::HistoryEntry;
 
 #[async_trait]
 pub trait ContentGenerator: Send + Sync {
     async fn generate_text(&self, current_text: &str) -> Result<(String, Model), ApiError>;
-
 }
 
 #[async_trait]
@@ -26,7 +25,6 @@ pub trait MessageStore: Send + Sync {
     async fn add_message(&self, message: HistoryEntry);
     async fn get_message_info(&self, message: &str) -> Option<Model>;
 }
-
 
 #[async_trait]
 pub trait StickerStore: Send + Sync {
@@ -105,7 +103,9 @@ async fn handle_friday(
 
     match generator.generate_text(text.as_str()).await {
         Ok((new_text, model_name)) => {
-            store.add_message(HistoryEntry::new(model_name, new_text.clone())).await;
+            store
+                .add_message(HistoryEntry::new(model_name, new_text.clone()))
+                .await;
 
             bot.send_message(msg.chat.id, new_text).await?;
         }

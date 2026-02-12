@@ -161,6 +161,7 @@ impl ContentRephraser for GigaChatApi {
                     if attempt == 1 {
                         continue;
                     }
+                    error!(error = %e, "Failed to generate content through GigaChat");
                     return Err(e);
                 }
             };

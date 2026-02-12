@@ -9,6 +9,7 @@ use crate::grok_api::dto::{GrokGenerateTextRequest, GrokGenerateTextResponse, Gr
 use async_trait::async_trait;
 use log::{info, warn};
 use reqwest::{Client, Proxy};
+use tracing::error;
 use url::Url;
 
 pub struct GrokApi {
@@ -67,6 +68,7 @@ impl ContentRephraser for GrokApi {
                     if attempt == 1 {
                         continue;
                     }
+                    error!(error = %e, "Failed to generate content through Grok");
                     return Err(e);
                 }
             };

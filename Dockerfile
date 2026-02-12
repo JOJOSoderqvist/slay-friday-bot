@@ -1,5 +1,5 @@
 # Stage 1: Builder
-FROM rust:latest AS builder
+FROM rust:1.93.0 AS builder
 
 # Install OpenSSL development libraries
 RUN apt-get update && apt-get install -y libssl-dev pkg-config build-essential

@@ -20,6 +20,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 async-trait = "0.1.89"
 rand = "0.10.0-rc.5"
+tracing-loki = "0.2.6"
 
 [dependencies.uuid]
 version = "1.17.0"

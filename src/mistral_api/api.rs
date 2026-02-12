@@ -8,7 +8,7 @@ use crate::mistral_api::dto::{
 use async_trait::async_trait;
 use log::info;
 use reqwest::{Client, Url};
-use tracing::{debug, instrument, warn};
+use tracing::{debug, error, instrument, warn};
 
 #[derive(Debug)]
 pub struct MistralApi {
@@ -63,6 +63,7 @@ impl ContentRephraser for MistralApi {
                     if attempt == 1 {
                         continue;
                     }
+                    error!(error = %e, "Failed to generate content through Mistral");
                     return Err(e);
                 }
             };

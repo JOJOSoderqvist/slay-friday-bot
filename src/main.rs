@@ -14,12 +14,10 @@ mod utils;
 
 use crate::commands::Command;
 use crate::config::BotConfig;
-use crate::generation_controller::{
-    ContentRephraser, GenerationController, ModelPool,
-};
+use crate::generation_controller::{ContentRephraser, GenerationController, ModelPool};
 use crate::gigachat_api::api::GigaChatApi;
 use crate::grok_api::api::GrokApi;
-use crate::handlers::{ContentGenerator, StickerStore, handle_command, MessageStore};
+use crate::handlers::{ContentGenerator, MessageStore, StickerStore, handle_command};
 use crate::mistral_api::api::MistralApi;
 use crate::repo::message_history_storage::MessageHistoryStorage;
 use crate::repo::sticker_storage::storage::StickerStorage;
@@ -33,6 +31,7 @@ use teloxide::prelude::*;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, fmt};
+use url::Url;
 
 #[tokio::main]
 async fn main() {
@@ -77,15 +76,28 @@ async fn main() {
 
     let model_pool = ModelPool::from(vec![gigachat_generator, mistral_generator, grok_generator]);
 
-    let generation_controller = Arc::new(GenerationController::new(
-        model_pool,
-    )) as Arc<dyn ContentGenerator>;
+    let generation_controller =
+        Arc::new(GenerationController::new(model_pool)) as Arc<dyn ContentGenerator>;
+
+    let (loki_layer, task) = match tracing_loki::builder()
+        .label("service_name", "slay-friday-bot")
+        .unwrap()
+        .build_url(Url::parse("http://loki:3100").unwrap())
+    {
+        Ok((layer, task)) => (layer, task),
+        Err(e) => {
+            eprintln!("error happened configuring loki: {}", e);
+            process::exit(1);
+        }
+    };
 
     let subscriber = tracing_subscriber::registry()
         .with(EnvFilter::from_default_env().add_directive(cfg.log_level.into()))
+        .with(loki_layer)
         .with(fmt::layer());
 
     subscriber.init();
+    tokio::spawn(task);
 
     type MyDialogue = Dialogue<State, InMemStorage<State>>;
     let handler = dptree::entry().branch(
