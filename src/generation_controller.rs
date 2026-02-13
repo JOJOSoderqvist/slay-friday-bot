@@ -3,9 +3,9 @@ use crate::errors::ApiError;
 use crate::errors::ApiError::{GenFailed, NoModels};
 use crate::handlers::ContentGenerator;
 use async_trait::async_trait;
+use mockall::automock;
 use rand::seq::SliceRandom;
 use std::sync::Arc;
-use mockall::automock;
 use tracing::error;
 use tracing::instrument;
 
@@ -71,11 +71,9 @@ async fn generation_controller_fallback_test() {
     let mut failing = MockContentRephraser::new();
     failing
         .expect_rephrase_text()
-        .returning(|_| Box::pin(async {Err(GenFailed)}));
+        .returning(|_| Box::pin(async { Err(GenFailed) }));
 
-    failing
-        .expect_get_model_name()
-        .return_const(Model::Grok);
+    failing.expect_get_model_name().return_const(Model::Grok);
 
     let mut succeeding = MockContentRephraser::new();
     succeeding
@@ -86,7 +84,6 @@ async fn generation_controller_fallback_test() {
         .expect_get_model_name()
         .return_const(Model::Mistral);
 
-
     let controller = GenerationController::new(vec![Arc::new(failing), Arc::new(succeeding)]);
 
     let res = controller.generate_text("some test text").await;
@@ -96,4 +93,20 @@ async fn generation_controller_fallback_test() {
     let (text, model) = res.unwrap();
     assert!(matches!(text.as_str(), "new text"));
     assert!(matches!(model, Model::Mistral));
+}
+
+#[tokio::test]
+async fn generation_controller_failed_test() {
+    let mut failing = MockContentRephraser::new();
+    failing
+        .expect_rephrase_text()
+        .returning(|_| Box::pin(async { Err(GenFailed) }));
+
+    failing.expect_get_model_name().return_const(Model::Grok);
+
+    let controller = GenerationController::new(vec![Arc::new(failing)]);
+
+    let res = controller.generate_text("some test text").await;
+
+    assert!(matches!(res, Err(GenFailed)));
 }
