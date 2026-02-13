@@ -5,12 +5,14 @@ use crate::handlers::ContentGenerator;
 use async_trait::async_trait;
 use rand::seq::SliceRandom;
 use std::sync::Arc;
+use mockall::automock;
 use tracing::error;
 use tracing::instrument;
 
 pub type ModelPool = Vec<Arc<dyn ContentRephraser>>;
 
 #[async_trait]
+#[automock]
 pub trait ContentRephraser: Send + Sync {
     async fn rephrase_text(&self, current_text: &str) -> Result<String, ApiError>;
 
@@ -54,4 +56,44 @@ impl ContentGenerator for GenerationController {
         error!("Generation with all models has failed");
         Err(GenFailed)
     }
+}
+
+#[tokio::test]
+async fn generation_controller_fails_test() {
+    let controller = GenerationController::new(vec![]);
+    let res = controller.generate_text("some test text").await;
+
+    assert!(matches!(res, Err(NoModels)))
+}
+
+#[tokio::test]
+async fn generation_controller_fallback_test() {
+    let mut failing = MockContentRephraser::new();
+    failing
+        .expect_rephrase_text()
+        .returning(|_| Box::pin(async {Err(GenFailed)}));
+
+    failing
+        .expect_get_model_name()
+        .return_const(Model::Grok);
+
+    let mut succeeding = MockContentRephraser::new();
+    succeeding
+        .expect_rephrase_text()
+        .returning(|_| Box::pin(async { Ok("new text".to_string()) }));
+
+    succeeding
+        .expect_get_model_name()
+        .return_const(Model::Mistral);
+
+
+    let controller = GenerationController::new(vec![Arc::new(failing), Arc::new(succeeding)]);
+
+    let res = controller.generate_text("some test text").await;
+
+    assert!(res.is_ok());
+
+    let (text, model) = res.unwrap();
+    assert!(matches!(text.as_str(), "new text"));
+    assert!(matches!(model, Model::Mistral));
 }
