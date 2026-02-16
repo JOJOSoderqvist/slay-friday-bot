@@ -1,9 +1,6 @@
 services:
   slayfridaybot:
-    build:
-      context: .
-      dockerfile: ./Dockerfile
-    image: slayfridaybot:latest
+    image: ghcr.io/jojosoderqvist/slay-friday-bot:main
     container_name: slayfridaybot
     env_file:
       - .env

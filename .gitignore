@@ -2,3 +2,5 @@
 .env
 .idea
 xray-config.json
+sticker_storage.json
+docker-compose.override.yml
