@@ -1,0 +1,95 @@
+use crate::commands::Command;
+use crate::common::Model;
+use crate::errors::ApiError;
+use crate::errors::ApiError::DialogueStorageError;
+use crate::handlers::add_sticker::add_sticker;
+use crate::handlers::delete::delete_sticker;
+use crate::handlers::friday::friday;
+use crate::handlers::get_sticker::get_sticker;
+use crate::handlers::list_stickers::list_stickers;
+use crate::handlers::model_info::model_info;
+use crate::handlers::rename_sticker::rename_sticker;
+use crate::repo::message_history_storage::HistoryEntry;
+use crate::repo::sticker_storage::dto::StickerEntry;
+use crate::states::State;
+use async_trait::async_trait;
+use log::info;
+use std::sync::Arc;
+use teloxide::Bot;
+use teloxide::dispatching::dialogue::InMemStorage;
+use teloxide::prelude::{Dialogue, Message, Requester};
+use teloxide::utils::command::BotCommands;
+use tracing::instrument;
+
+#[async_trait]
+pub trait ContentGenerator: Send + Sync {
+    async fn generate_text(&self, current_text: &str) -> Result<(String, Model), ApiError>;
+}
+
+#[async_trait]
+pub trait MessageStore: Send + Sync {
+    async fn add_message(&self, message: HistoryEntry);
+    async fn get_message_info(&self, message: &str) -> Option<Model>;
+}
+
+#[async_trait]
+pub trait StickerStore: Send + Sync {
+    async fn add_sticker(&self, sticker: StickerEntry) -> Result<(), ApiError>;
+    async fn get_sticker(&self, sticker_name: &str) -> Option<StickerEntry>;
+    async fn rename_sticker(&self, old_name: &str, new_name: &str) -> Result<(), ApiError>;
+    async fn list_stickers(&self) -> Option<Vec<StickerEntry>>;
+    async fn remove_sticker(&self, sticker_name: &str) -> Result<(), ApiError>;
+    async fn is_already_created(&self, sticker_name: &str) -> bool;
+}
+
+pub type MyDialogue = Dialogue<State, InMemStorage<State>>;
+
+#[instrument(skip(bot, generator, cmd, msg, sticker_store, message_store, dialogue))]
+pub async fn handle_command(
+    bot: Bot,
+    msg: Message,
+    cmd: Command,
+    generator: Arc<dyn ContentGenerator>,
+    sticker_store: Arc<dyn StickerStore>,
+    message_store: Arc<dyn MessageStore>,
+    dialogue: MyDialogue,
+) -> Result<(), ApiError> {
+    match cmd {
+        Command::Help => help(bot, msg).await?,
+
+        Command::Friday => friday(bot, msg, generator, message_store).await?,
+
+        Command::Model => model_info(bot, msg, message_store).await?,
+
+        Command::ListStickers => list_stickers(bot, msg, sticker_store).await?,
+
+        Command::AddSticker(name) => add_sticker(bot, msg, dialogue, name, sticker_store).await?,
+
+        Command::Cancel => cancel(bot, msg, dialogue).await?,
+
+        Command::Sticker(name) => get_sticker(bot, msg, name, sticker_store).await?,
+
+        Command::RenameSticker(old_name) => {
+            rename_sticker(bot, msg, dialogue, old_name, sticker_store).await?
+        }
+
+        Command::DeleteSticker(name) => delete_sticker(bot, msg, name, sticker_store).await?,
+        Command::Slay => todo!(),
+    }
+
+    Ok(())
+}
+
+#[instrument(skip(bot, msg))]
+async fn help(bot: Bot, msg: Message) -> Result<(), ApiError> {
+    info!("Help command");
+    bot.send_message(msg.chat.id, Command::descriptions().to_string())
+        .await?;
+    Ok(())
+}
+
+async fn cancel(bot: Bot, msg: Message, dialogue: MyDialogue) -> Result<(), ApiError> {
+    bot.send_message(msg.chat.id, "Операция отменена.").await?;
+    dialogue.exit().await.map_err(DialogueStorageError)?;
+    Ok(())
+}

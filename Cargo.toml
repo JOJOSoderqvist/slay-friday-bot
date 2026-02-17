@@ -22,6 +22,7 @@ async-trait = "0.1.89"
 rand = "0.10.0-rc.5"
 tracing-loki = "0.2.6"
 mockall = "0.14.0"
+strum = { version = "0.27.2", features = ["derive"] }
 
 [dependencies.uuid]
 version = "1.17.0"

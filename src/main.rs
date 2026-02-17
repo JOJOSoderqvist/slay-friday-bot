@@ -17,7 +17,9 @@ use crate::config::BotConfig;
 use crate::generation_controller::{ContentRephraser, GenerationController, ModelPool};
 use crate::gigachat_api::api::GigaChatApi;
 use crate::grok_api::api::GrokApi;
-use crate::handlers::{ContentGenerator, MessageStore, StickerStore, handle_command};
+use crate::handlers::add_sticker::receive_sticker;
+use crate::handlers::rename_sticker::receive_new_sticker_name;
+use crate::handlers::root_handler::{ContentGenerator, MessageStore, StickerStore, handle_command};
 use crate::mistral_api::api::MistralApi;
 use crate::repo::message_history_storage::MessageHistoryStorage;
 use crate::repo::sticker_storage::storage::StickerStorage;
@@ -99,26 +101,20 @@ async fn main() {
     subscriber.init();
     tokio::spawn(task);
 
-    type MyDialogue = Dialogue<State, InMemStorage<State>>;
-    let handler = dptree::entry().branch(
-        Update::filter_message()
-            .enter_dialogue::<Message, InMemStorage<State>, State>()
-            .branch(
-                dptree::entry()
-                    .filter_command::<Command>()
-                    .endpoint(handle_command),
-            )
-            .branch(
-                dptree::filter_map_async(|dialogue: MyDialogue| async move {
-                    dialogue.get().await.ok().flatten()
-                })
-                .branch(case![State::ReceiveSticker { name }].endpoint(handlers::receive_sticker))
-                .branch(
-                    case![State::ReceiveNewName { old_name }]
-                        .endpoint(handlers::receive_new_sticker_name),
-                ),
-            ),
-    );
+    let command_handler = dptree::entry()
+        .filter_command::<Command>()
+        .endpoint(handle_command);
+
+    let state_handler = dptree::entry()
+        .branch(case![State::ReceiveSticker { name }].endpoint(receive_sticker))
+        .branch(case![State::ReceiveNewName { old_name }].endpoint(receive_new_sticker_name));
+
+    let message_handler = Update::filter_message()
+        .enter_dialogue::<Message, InMemStorage<State>, State>()
+        .branch(command_handler)
+        .branch(state_handler);
+
+    let handler = dptree::entry().branch(message_handler);
 
     Dispatcher::builder(bot, handler)
         .dependencies(dptree::deps![

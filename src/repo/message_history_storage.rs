@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use tokio::sync::RwLock;
 
 use crate::common::Model;
-use crate::handlers::MessageStore;
+use crate::handlers::root_handler::MessageStore;
 
 const HISTORY_STORAGE_SIZE: usize = 20;
 pub struct HistoryEntry {
