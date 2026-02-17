@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter};
+use strum::EnumIter;
 use teloxide::utils::command::BotCommands;
 
 #[derive(BotCommands, Clone)]
@@ -5,7 +7,7 @@ use teloxide::utils::command::BotCommands;
     rename_rule = "lowercase",
     description = "Поддерживаются следующие команды:"
 )]
-#[derive(Debug)]
+#[derive(Debug, EnumIter)]
 pub enum Command {
     #[command(description = "Показать это сообщение.")]
     Help,
@@ -38,3 +40,38 @@ pub enum Command {
     #[command(description = "Отмена операции в рамках диалога")]
     Cancel,
 }
+
+impl Display for Command {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Command::Help => "/help",
+            Command::Slay => "/slay",
+            Command::Friday => "/friday",
+            Command::Model => "/model",
+            Command::Sticker(_) => "/get",
+            Command::ListStickers => "/list",
+            Command::AddSticker(_) => "/add",
+            Command::RenameSticker(_) => "/rename",
+            Command::DeleteSticker(_) => "/delete",
+            Command::Cancel => "/cancel"
+        }
+        )
+    }
+}
+
+// impl Command {
+//     pub fn map_to_callback(&self) -> &str {
+//         match self {
+//             Command::Help => "slay:help",
+//             Command::Slay => {}
+//             Command::Friday => {}
+//             Command::Model => {}
+//             Command::Sticker(_) => {}
+//             Command::ListStickers => {}
+//             Command::AddSticker(_) => {}
+//             Command::RenameSticker(_) => {}
+//             Command::DeleteSticker(_) => {}
+//             Command::Cancel => {}
+//         }
+//     }
+// }

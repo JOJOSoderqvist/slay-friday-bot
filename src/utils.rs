@@ -30,7 +30,7 @@ pub fn format_time_delta(td: Duration) -> String {
     format!("{days} дней, {hours} часов, {minutes} минут")
 }
 
-pub fn setup_inline_keyboard<T: Display>(
+pub fn setup_inline_callback_keyboard<T: Display>(
     data: Vec<T>,
     chunk_size: usize,
 ) -> Option<InlineKeyboardMarkup> {
@@ -45,13 +45,10 @@ pub fn setup_inline_keyboard<T: Display>(
                 .iter()
                 .map(|elem| {
                     let text = elem.to_string();
+                    let displayed_text = text.clone();
+                    let callback_text = text.clone();
 
-                    let copy_text_button = CopyTextButton { text: text.clone() };
-
-                    InlineKeyboardButton::new(
-                        text,
-                        InlineKeyboardButtonKind::CopyText(copy_text_button),
-                    )
+                    InlineKeyboardButton::callback(displayed_text, callback_text)
                 })
                 .collect()
         })
