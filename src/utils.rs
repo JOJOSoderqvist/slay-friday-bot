@@ -1,5 +1,10 @@
 use chrono::{Datelike, Duration, Utc, Weekday};
 use chrono_tz::Europe::Moscow;
+use std::fmt::Display;
+use teloxide::types::{
+    CopyTextButton, InlineKeyboardButton, InlineKeyboardButtonKind, InlineKeyboardMarkup,
+    KeyboardButton, ReplyMarkup,
+};
 
 pub fn get_time_until_friday() -> Option<Duration> {
     let now = Utc::now().with_timezone(&Moscow);
@@ -23,4 +28,48 @@ pub fn format_time_delta(td: Duration) -> String {
     let hours = td.num_hours() % 24;
     let minutes = td.num_minutes() % 60;
     format!("{days} дней, {hours} часов, {minutes} минут")
+}
+
+pub fn setup_inline_keyboard<T: Display>(
+    data: Vec<T>,
+    chunk_size: usize,
+) -> Option<InlineKeyboardMarkup> {
+    if data.is_empty() {
+        return None;
+    }
+
+    let rows: Vec<Vec<InlineKeyboardButton>> = data
+        .chunks(chunk_size)
+        .map(|chunk| {
+            chunk
+                .iter()
+                .map(|elem| {
+                    let text = elem.to_string();
+
+                    let copy_text_button = CopyTextButton { text: text.clone() };
+
+                    InlineKeyboardButton::new(
+                        text,
+                        InlineKeyboardButtonKind::CopyText(copy_text_button),
+                    )
+                })
+                .collect()
+        })
+        .collect();
+
+    Some(InlineKeyboardMarkup::new(rows))
+}
+
+pub fn reply_suggestions_keyboard<T: ToString>(data: &[T]) -> ReplyMarkup {
+    let rows: Vec<Vec<KeyboardButton>> = data
+        .chunks(3)
+        .map(|chunk| {
+            chunk
+                .iter()
+                .map(|x| KeyboardButton::new(format!("/get {}", x.to_string())))
+                .collect()
+        })
+        .collect();
+
+    ReplyMarkup::keyboard(rows)
 }

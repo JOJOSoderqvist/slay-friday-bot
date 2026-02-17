@@ -9,6 +9,10 @@ use teloxide::utils::command::BotCommands;
 pub enum Command {
     #[command(description = "Показать это сообщение.")]
     Help,
+    #[command(
+        description = "Метакоманда, предоставляющая интерфейс взаимодействия с другими командами"
+    )]
+    Slay,
     #[command(description = "Показать, сколько осталось до нефорской пятницы.")]
     Friday,
     #[command(description = "Показать, какая модель сгенерировала сообщние (из последних 20)")]

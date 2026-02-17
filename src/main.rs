@@ -17,7 +17,9 @@ use crate::config::BotConfig;
 use crate::generation_controller::{ContentRephraser, GenerationController, ModelPool};
 use crate::gigachat_api::api::GigaChatApi;
 use crate::grok_api::api::GrokApi;
-use crate::handlers::{ContentGenerator, MessageStore, StickerStore, handle_command};
+use crate::handlers::add_sticker::receive_sticker;
+use crate::handlers::rename_sticker::receive_new_sticker_name;
+use crate::handlers::root_handler::{ContentGenerator, MessageStore, StickerStore, handle_command};
 use crate::mistral_api::api::MistralApi;
 use crate::repo::message_history_storage::MessageHistoryStorage;
 use crate::repo::sticker_storage::storage::StickerStorage;
@@ -104,10 +106,8 @@ async fn main() {
         .endpoint(handle_command);
 
     let state_handler = dptree::entry()
-        .branch(case![State::ReceiveSticker { name }].endpoint(handlers::receive_sticker))
-        .branch(
-            case![State::ReceiveNewName { old_name }].endpoint(handlers::receive_new_sticker_name),
-        );
+        .branch(case![State::ReceiveSticker { name }].endpoint(receive_sticker))
+        .branch(case![State::ReceiveNewName { old_name }].endpoint(receive_new_sticker_name));
 
     let message_handler = Update::filter_message()
         .enter_dialogue::<Message, InMemStorage<State>, State>()
