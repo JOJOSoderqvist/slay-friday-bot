@@ -20,6 +20,7 @@ use crate::grok_api::api::GrokApi;
 use crate::handlers::add_sticker::receive_sticker;
 use crate::handlers::rename_sticker::receive_new_sticker_name;
 use crate::handlers::root_handler::{ContentGenerator, MessageStore, StickerStore, handle_command};
+use crate::handlers::slay::inline_choice_callback;
 use crate::mistral_api::api::MistralApi;
 use crate::repo::message_history_storage::MessageHistoryStorage;
 use crate::repo::sticker_storage::storage::StickerStorage;
@@ -109,12 +110,18 @@ async fn main() {
         .branch(case![State::ReceiveSticker { name }].endpoint(receive_sticker))
         .branch(case![State::ReceiveNewName { old_name }].endpoint(receive_new_sticker_name));
 
+    let callback_handler = Update::filter_callback_query()
+        .enter_dialogue::<CallbackQuery, InMemStorage<State>, State>() // or Update, see note below
+        .endpoint(inline_choice_callback);
+
     let message_handler = Update::filter_message()
         .enter_dialogue::<Message, InMemStorage<State>, State>()
         .branch(command_handler)
         .branch(state_handler);
 
-    let handler = dptree::entry().branch(message_handler);
+    let handler = dptree::entry()
+        .branch(message_handler)
+        .branch(callback_handler);
 
     Dispatcher::builder(bot, handler)
         .dependencies(dptree::deps![

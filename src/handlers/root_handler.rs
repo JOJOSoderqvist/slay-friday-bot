@@ -9,6 +9,7 @@ use crate::handlers::get_sticker::get_sticker;
 use crate::handlers::list_stickers::list_stickers;
 use crate::handlers::model_info::model_info;
 use crate::handlers::rename_sticker::rename_sticker;
+use crate::handlers::slay::slay;
 use crate::repo::message_history_storage::HistoryEntry;
 use crate::repo::sticker_storage::dto::StickerEntry;
 use crate::states::State;
@@ -74,14 +75,14 @@ pub async fn handle_command(
         }
 
         Command::DeleteSticker(name) => delete_sticker(bot, msg, name, sticker_store).await?,
-        Command::Slay => todo!(),
+        Command::Slay => slay(bot, msg, dialogue).await?,
     }
 
     Ok(())
 }
 
 #[instrument(skip(bot, msg))]
-async fn help(bot: Bot, msg: Message) -> Result<(), ApiError> {
+pub async fn help(bot: Bot, msg: Message) -> Result<(), ApiError> {
     info!("Help command");
     bot.send_message(msg.chat.id, Command::descriptions().to_string())
         .await?;

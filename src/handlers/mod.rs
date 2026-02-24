@@ -6,4 +6,4 @@ mod list_stickers;
 mod model_info;
 pub mod rename_sticker;
 pub mod root_handler;
-mod slay;
+pub mod slay;

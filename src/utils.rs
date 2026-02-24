@@ -1,9 +1,10 @@
+use crate::commands::Command;
 use chrono::{Datelike, Duration, Utc, Weekday};
 use chrono_tz::Europe::Moscow;
 use std::fmt::Display;
 use teloxide::types::{
     CopyTextButton, InlineKeyboardButton, InlineKeyboardButtonKind, InlineKeyboardMarkup,
-    KeyboardButton, ReplyMarkup,
+    KeyboardButton, KeyboardMarkup, ReplyMarkup,
 };
 
 pub fn get_time_until_friday() -> Option<Duration> {
@@ -57,16 +58,22 @@ pub fn setup_inline_callback_keyboard<T: Display>(
     Some(InlineKeyboardMarkup::new(rows))
 }
 
-pub fn reply_suggestions_keyboard<T: ToString>(data: &[T]) -> ReplyMarkup {
+// TODO: Slice to Vec<T> ?
+pub fn reply_suggestions_keyboard<T: ToString>(data: &[T], cmd: Option<Command>) -> ReplyMarkup {
+    let chosen_option = cmd.unwrap_or(Command::Sticker(String::new())); // TODO: Remove this cringe
     let rows: Vec<Vec<KeyboardButton>> = data
         .chunks(3)
         .map(|chunk| {
             chunk
                 .iter()
-                .map(|x| KeyboardButton::new(format!("/get {}", x.to_string())))
+                .map(|x| KeyboardButton::new(format!("{} {}", chosen_option, x.to_string())))
                 .collect()
         })
         .collect();
+    let mut keyboard = KeyboardMarkup::new(rows);
+    keyboard.selective = true;
+    keyboard.resize_keyboard = true;
+    keyboard.one_time_keyboard = true;
 
-    ReplyMarkup::keyboard(rows)
+    ReplyMarkup::Keyboard(keyboard)
 }

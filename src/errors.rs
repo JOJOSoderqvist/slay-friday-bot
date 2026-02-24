@@ -60,6 +60,9 @@ pub enum ApiError {
 
     #[error("Dialogue storage error: {0}")]
     DialogueStorageError(#[from] InMemStorageError),
+
+    #[error("Command conversion error, unknown command: {0}")]
+    CommandConversionError(String),
 }
 
 #[derive(Error, Debug)]

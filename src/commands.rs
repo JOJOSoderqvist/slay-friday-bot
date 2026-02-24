@@ -1,5 +1,8 @@
+use crate::errors::ApiError;
+use crate::errors::ApiError::CommandConversionError;
 use std::fmt::{Display, Formatter};
-use strum::EnumIter;
+use std::str::FromStr;
+use strum::{EnumIter, VariantArray};
 use teloxide::utils::command::BotCommands;
 
 #[derive(BotCommands, Clone)]
@@ -7,7 +10,7 @@ use teloxide::utils::command::BotCommands;
     rename_rule = "lowercase",
     description = "Поддерживаются следующие команды:"
 )]
-#[derive(Debug, EnumIter)]
+#[derive(Debug, EnumIter, PartialEq)]
 pub enum Command {
     #[command(description = "Показать это сообщение.")]
     Help,
@@ -53,25 +56,26 @@ impl Display for Command {
             Command::AddSticker(_) => "/add",
             Command::RenameSticker(_) => "/rename",
             Command::DeleteSticker(_) => "/delete",
-            Command::Cancel => "/cancel"
-        }
-        )
+            Command::Cancel => "/cancel",
+        })
     }
 }
 
-// impl Command {
-//     pub fn map_to_callback(&self) -> &str {
-//         match self {
-//             Command::Help => "slay:help",
-//             Command::Slay => {}
-//             Command::Friday => {}
-//             Command::Model => {}
-//             Command::Sticker(_) => {}
-//             Command::ListStickers => {}
-//             Command::AddSticker(_) => {}
-//             Command::RenameSticker(_) => {}
-//             Command::DeleteSticker(_) => {}
-//             Command::Cancel => {}
-//         }
-//     }
-// }
+impl FromStr for Command {
+    type Err = ApiError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "/help" => Ok(Command::Help),
+            "/slay" => Ok(Command::Slay),
+            "/friday" => Ok(Command::Friday),
+            "/model" => Ok(Command::Model),
+            "/get" => Ok(Command::Sticker(String::default())), // TODO: Additional alloc?
+            "/add" => Ok(Command::AddSticker(String::default())),
+            "/list" => Ok(Command::ListStickers),
+            "/rename" => Ok(Command::RenameSticker(String::default())),
+            "/cancel" => Ok(Command::Cancel),
+            cmd => Err(CommandConversionError(format!("Unknown command: {}", cmd))),
+        }
+    }
+}

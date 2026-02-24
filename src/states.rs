@@ -1,4 +1,4 @@
-use teloxide::types::UserId;
+use teloxide::types::{Message, MessageId, UserId};
 
 #[derive(Clone, Default)]
 pub enum State {
@@ -11,9 +11,10 @@ pub enum State {
         old_name: String,
     },
     ShowInline {
-        user_id: UserId
+        user_id: UserId,
+        original_msg: Message,
     },
     ShowOutline {
-        user_id: UserId
+        user_id: UserId,
     },
 }
