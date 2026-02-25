@@ -1,6 +1,6 @@
 use crate::errors::ApiError;
 use crate::errors::ApiError::{DialogueStorageError, StickerAlreadyExists};
-use crate::handlers::root_handler::{MyDialogue, StickerStore};
+use crate::handlers::root_handler::{DialogueStore, MyDialogue, StickerStore};
 use crate::states::State;
 use log::info;
 use std::sync::Arc;
@@ -12,7 +12,7 @@ use tracing::{error, instrument};
 pub async fn rename_sticker(
     bot: Bot,
     msg: Message,
-    dialogue: MyDialogue,
+    dialogue: Arc<dyn DialogueStore>,
     sticker_name: String,
     sticker_store: Arc<dyn StickerStore>,
 ) -> Result<(), ApiError> {
@@ -43,30 +43,26 @@ pub async fn rename_sticker(
     )
     .await?;
 
-    dialogue
-        .update(State::ReceiveNewName {
-            old_name: sticker_name,
-        })
-        .await
-        .map_err(DialogueStorageError)?;
-
+    let key = (msg.from.unwrap().id, msg.chat.id);
+    dialogue.update_dialogue(key, State::ReceiveNewName {old_name: sticker_name});
     Ok(())
 }
 
 pub async fn receive_new_sticker_name(
     bot: Bot,
     msg: Message,
-    dialogue: MyDialogue,
-    old_sticker_name: String,
+    dialogue: Arc<dyn DialogueStore>,
     sticker_store: Arc<dyn StickerStore>,
 ) -> Result<(), ApiError> {
+    let key = (msg.from.clone().unwrap().id, msg.chat.id);
+
     let new_sticker_name = if let Some(name) = msg.text() {
         name
     } else {
         bot.send_message(msg.chat.id, "Это сообщение - не текст".to_string())
             .await?;
 
-        dialogue.exit().await?;
+        dialogue.remove_dialogue(key);
         return Ok(());
     };
 
@@ -74,12 +70,16 @@ pub async fn receive_new_sticker_name(
         bot.send_message(msg.chat.id, "Пожалуйста, укажите название".to_string())
             .await?;
 
-        dialogue.exit().await?;
+        dialogue.remove_dialogue(key);
         return Ok(());
     }
 
+    let Some(State::ReceiveNewName {old_name }) = dialogue.get_dialogue(key) else {
+        return Ok(());
+    };
+
     match sticker_store
-        .rename_sticker(old_sticker_name.as_str(), new_sticker_name)
+        .rename_sticker(old_name.as_str(), new_sticker_name)
         .await
     {
         Ok(_) => {
@@ -88,7 +88,8 @@ pub async fn receive_new_sticker_name(
                 format!("Новое имя '{}' сохранено! 🎉", new_sticker_name),
             )
             .await?;
-            dialogue.exit().await?;
+
+            dialogue.remove_dialogue(key);
         }
 
         Err(StickerAlreadyExists) => {
@@ -102,7 +103,7 @@ pub async fn receive_new_sticker_name(
             )
             .await?;
 
-            dialogue.exit().await?;
+            dialogue.remove_dialogue(key);
         }
 
         Err(e) => {
@@ -110,7 +111,7 @@ pub async fn receive_new_sticker_name(
             bot.send_message(msg.chat.id, format!("Произошла неизвестная ошибка {}", e))
                 .await?;
 
-            dialogue.exit().await?;
+            dialogue.remove_dialogue(key);
         }
     }
 

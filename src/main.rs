@@ -19,7 +19,7 @@ use crate::gigachat_api::api::GigaChatApi;
 use crate::grok_api::api::GrokApi;
 use crate::handlers::add_sticker::receive_sticker;
 use crate::handlers::rename_sticker::receive_new_sticker_name;
-use crate::handlers::root_handler::{ContentGenerator, MessageStore, StickerStore, handle_command};
+use crate::handlers::root_handler::{ContentGenerator, MessageStore, StickerStore, handle_command, DialogueStore};
 use crate::handlers::slay::inline_choice_callback;
 use crate::mistral_api::api::MistralApi;
 use crate::repo::message_history_storage::MessageHistoryStorage;
@@ -35,6 +35,8 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, fmt};
 use url::Url;
+use crate::handlers::state_dispatcher::state_dispatcher;
+use crate::repo::dialogue_storage::UserDialogueStorage;
 
 #[tokio::main]
 async fn main() {
@@ -105,19 +107,31 @@ async fn main() {
     let command_handler = dptree::entry()
         .filter_command::<Command>()
         .endpoint(handle_command);
+    //
+    // // let state_handler = dptree::entry()
+    // //     .branch(case![State::ReceiveSticker { name }].endpoint(receive_sticker))
+    // //     .branch(case![State::ReceiveNewName { old_name }].endpoint(receive_new_sticker_name));
+    //
+    // let callback_handler = Update::filter_callback_query()
+    //     .endpoint(inline_choice_callback);
+    //
+    // let message_handler = Update::filter_message()
+    //     .branch(command_handler)
+    //     .endpoint(state_dispatcher);
+    //
+    // let handler = dptree::entry()
+    //     .branch(message_handler)
+    //     .branch(callback_handler);
 
-    let state_handler = dptree::entry()
-        .branch(case![State::ReceiveSticker { name }].endpoint(receive_sticker))
-        .branch(case![State::ReceiveNewName { old_name }].endpoint(receive_new_sticker_name));
+    let dialogue_store = Arc::new(UserDialogueStorage::new()) as Arc<dyn DialogueStore>;
+
 
     let callback_handler = Update::filter_callback_query()
-        .enter_dialogue::<CallbackQuery, InMemStorage<State>, State>() // or Update, see note below
         .endpoint(inline_choice_callback);
 
     let message_handler = Update::filter_message()
-        .enter_dialogue::<Message, InMemStorage<State>, State>()
         .branch(command_handler)
-        .branch(state_handler);
+        .endpoint(state_dispatcher);
 
     let handler = dptree::entry()
         .branch(message_handler)
@@ -128,7 +142,7 @@ async fn main() {
             generation_controller,
             sticker_storage,
             message_history_storage,
-            InMemStorage::<State>::new()
+            dialogue_store
         ])
         .enable_ctrlc_handler()
         .default_handler(|_upd| async {})

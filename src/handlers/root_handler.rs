@@ -21,6 +21,7 @@ use teloxide::dispatching::dialogue::InMemStorage;
 use teloxide::prelude::{Dialogue, Message, Requester};
 use teloxide::utils::command::BotCommands;
 use tracing::instrument;
+use crate::repo::dialogue_storage::DialogueStorageKey;
 
 #[async_trait]
 pub trait ContentGenerator: Send + Sync {
@@ -43,6 +44,13 @@ pub trait StickerStore: Send + Sync {
     async fn is_already_created(&self, sticker_name: &str) -> bool;
 }
 
+pub trait DialogueStore: Send + Sync {
+    fn get_dialogue(&self, key: DialogueStorageKey) -> Option<State>;
+    fn remove_dialogue(&self, key: DialogueStorageKey) -> Option<(DialogueStorageKey, State)>;
+    fn update_dialogue(&self, key: DialogueStorageKey, new_state: State) -> Option<State>;
+}
+
+
 pub type MyDialogue = Dialogue<State, InMemStorage<State>>;
 
 #[instrument(skip(bot, generator, cmd, msg, sticker_store, message_store, dialogue))]
@@ -53,7 +61,7 @@ pub async fn handle_command(
     generator: Arc<dyn ContentGenerator>,
     sticker_store: Arc<dyn StickerStore>,
     message_store: Arc<dyn MessageStore>,
-    dialogue: MyDialogue,
+    dialogue: Arc<dyn DialogueStore>
 ) -> Result<(), ApiError> {
     match cmd {
         Command::Help => help(bot, msg).await?,
@@ -89,8 +97,9 @@ pub async fn help(bot: Bot, msg: Message) -> Result<(), ApiError> {
     Ok(())
 }
 
-async fn cancel(bot: Bot, msg: Message, dialogue: MyDialogue) -> Result<(), ApiError> {
+async fn cancel(bot: Bot, msg: Message, dialogue: Arc<dyn DialogueStore>) -> Result<(), ApiError> {
+    let key = (msg.from.unwrap().id, msg.chat.id);
+    dialogue.remove_dialogue(key);
     bot.send_message(msg.chat.id, "Операция отменена.").await?;
-    dialogue.exit().await.map_err(DialogueStorageError)?;
     Ok(())
 }

@@ -81,6 +81,8 @@ pub enum RepoError {
 
     #[error("Failed to change file {0}")]
     ChangeFileError(#[source] std::io::Error),
+
+    // #[error()]
 }
 
 #[derive(Error, Debug)]

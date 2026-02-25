@@ -7,3 +7,4 @@ mod model_info;
 pub mod rename_sticker;
 pub mod root_handler;
 pub mod slay;
+pub mod state_dispatcher;

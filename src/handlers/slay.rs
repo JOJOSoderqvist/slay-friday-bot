@@ -4,20 +4,20 @@ use crate::errors::ApiError;
 use crate::errors::ApiError::DialogueStorageError;
 use crate::handlers::friday::friday;
 use crate::handlers::list_stickers::list_stickers;
-use crate::handlers::root_handler::{ContentGenerator, MessageStore, MyDialogue, help};
-use crate::repo::sticker_storage::dto::StickerEntry;
+use crate::handlers::root_handler::{ContentGenerator, MessageStore, MyDialogue, help, DialogueStore};
 use crate::states::State;
 use crate::utils::{reply_suggestions_keyboard, setup_inline_callback_keyboard};
 use log::{info, warn};
-use std::cmp::PartialEq;
 use std::sync::Arc;
 use strum::IntoEnumIterator;
 use teloxide::Bot;
 use teloxide::prelude::*;
 use teloxide::sugar::request::RequestReplyExt;
-use teloxide::types::{Message, MessageId, User};
+use teloxide::types::{Message};
+use url::quirks::origin;
+use crate::handlers::add_sticker::add_sticker;
 
-pub async fn slay(bot: Bot, msg: Message, dialogue: MyDialogue) -> Result<(), ApiError> {
+pub async fn slay(bot: Bot, msg: Message, dialogue: Arc<dyn DialogueStore>) -> Result<(), ApiError> {
     info!("entered slay command");
     let user = match msg.from {
         None => {
@@ -32,7 +32,7 @@ pub async fn slay(bot: Bot, msg: Message, dialogue: MyDialogue) -> Result<(), Ap
         .filter(|cmd| {
             *cmd != Command::Slay
                 && *cmd != Command::Model
-                && *cmd != Command::AddSticker(String::new())
+                // && *cmd != Command::AddSticker(String::new())
                 && *cmd != Command::RenameSticker(String::new())
         })
         .collect();
@@ -50,13 +50,11 @@ pub async fn slay(bot: Bot, msg: Message, dialogue: MyDialogue) -> Result<(), Ap
         .reply_markup(inline_keyboard)
         .await?;
 
-    dialogue
-        .update(State::ShowInline {
-            user_id: user.id,
-            original_msg: msg,
-        })
-        .await
-        .map_err(DialogueStorageError)?;
+    let key = (msg.from.clone().unwrap().id, msg.chat.id);
+    dialogue.update_dialogue(key, State::ShowInline {
+        user_id: user.id,
+        original_msg: msg,
+    });
 
     Ok(())
 }
@@ -67,24 +65,36 @@ pub async fn inline_choice_callback(
     generator: Arc<dyn ContentGenerator>,
     message_store: Arc<dyn MessageStore>,
     sticker_store: Arc<dyn StickerStore>,
-    dialogue: MyDialogue,
+    dialogue: Arc<dyn DialogueStore>,
 ) -> Result<(), ApiError> {
     info!("entering callback");
-    let current_state = dialogue.get().await?.unwrap();
 
-    let State::ShowInline {
-        user_id,
-        original_msg: stored_msg,
-    } = current_state
-    else {
-        return Ok(());
+    bot.answer_callback_query(q.id).await?;
+
+    // TODO: Бредик
+    let msg_chat_id = match q.message {
+        Some(msg) => msg.chat().id,
+        None => {
+            return Ok(());
+        }
+    };
+
+
+    let key = (q.from.id, msg_chat_id);
+
+    let (user_id, stored_msg) = match dialogue.get_dialogue(key) {
+        Some(State::ShowInline {user_id, original_msg}) => {
+            (user_id, original_msg)
+        }
+        _ => {
+            return Ok(())
+        }
     };
 
     if q.from.id != user_id {
         return Ok(());
     }
 
-    bot.answer_callback_query(q.id).await?;
 
     let Some(data) = q.data else {
         warn!("callback had no data");
@@ -95,17 +105,17 @@ pub async fn inline_choice_callback(
         Command::Help => {
             info!("help cmd parsed");
             help(bot, stored_msg).await?;
-            dialogue.exit().await?;
+            dialogue.remove_dialogue(key);
             Ok(())
         }
         Command::Friday => {
             friday(bot, stored_msg, generator, message_store).await?;
-            dialogue.exit().await?;
+            dialogue.remove_dialogue(key);
             Ok(())
         }
         Command::ListStickers => {
             list_stickers(bot, stored_msg, sticker_store).await?;
-            dialogue.exit().await?;
+            dialogue.remove_dialogue(key);
             Ok(())
         }
         Command::Sticker(_) => {
@@ -114,7 +124,7 @@ pub async fn inline_choice_callback(
                 None => {
                     bot.send_message(stored_msg.chat.id, "No stickers available")
                         .await?;
-                    dialogue.exit().await?;
+                    dialogue.remove_dialogue(key);
                     return Ok(());
                 }
                 Some(stickers) => stickers,
@@ -130,12 +140,17 @@ pub async fn inline_choice_callback(
                 .reply_to(stored_msg.id)
                 .reply_markup(keyboard)
                 .await?;
-            dialogue.exit().await?;
+            dialogue.remove_dialogue(key);
             Ok(())
         }
         Command::Cancel => {
-            dialogue.exit().await?;
+            dialogue.remove_dialogue(key);
             Ok(())
+        }
+
+        Command::AddSticker(_) => {
+            todo!()
+            // add_sticker(bot, stored_msg, dialogue)
         }
         cmd => {
             bot.send_message(
@@ -143,7 +158,7 @@ pub async fn inline_choice_callback(
                 format!("Команда {cmd} пока не поддерживается"),
             )
             .await?;
-            dialogue.exit().await?;
+            dialogue.remove_dialogue(key);
             Ok(())
         }
     }
