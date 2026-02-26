@@ -71,19 +71,19 @@ pub async fn inline_choice_callback(
     bot.answer_callback_query(q.id).await?;
 
     // TODO: Бредик
-    let original_msg = match q.message {
+    let (original_msg, chat_id) = match q.message {
         Some(msg) => {
             if msg.regular_message().is_none() {
                 warn!("message does not exist");
             }
-            msg.regular_message().unwrap().clone() // TODO: is clone necessary?
+            (msg.regular_message().unwrap().clone(), msg.chat().id) // TODO: is clone necessary?
         }
         None => {
             return Ok(());
         }
     };
 
-    let key = (q.from.id, original_msg.chat.id);
+    let key = (q.from.id, chat_id);
 
     let (user_id, stored_msg) = match dialogue.get_dialogue(key) {
         Some(State::ShowInline {
@@ -152,20 +152,27 @@ pub async fn inline_choice_callback(
         }
 
         Command::AddSticker => {
+            if let Some(d) = dialogue.get_dialogue(key) {
+                tracing::info!("updated state: {d}, u_id: {}, c_id: {}", key.0, key.1)
+            } else {
+                tracing::info!("no state")
+            }
+
             dialogue.remove_dialogue(key);
-            trigger_add(bot, original_msg, dialogue).await?;
+            info!("trigger add");
+            trigger_add(bot, original_msg, Some(key), dialogue).await?;
             Ok(())
         }
 
         Command::RenameSticker => {
             dialogue.remove_dialogue(key);
-            trigger_rename(bot, original_msg, dialogue).await?;
+            trigger_rename(bot, original_msg, Some(key), dialogue).await?;
             Ok(())
         }
 
         Command::DeleteSticker => {
             dialogue.remove_dialogue(key);
-            trigger_delete(bot, original_msg, dialogue).await?;
+            trigger_delete(bot, original_msg, Some(key), dialogue).await?;
             Ok(())
         }
         cmd => {

@@ -4,7 +4,7 @@ use crate::handlers::delete_sticker::delete_sticker;
 use crate::handlers::rename_sticker::{process_new_sticker_name, rename_sticker};
 use crate::handlers::root_handler::{DialogueStore, StickerStore};
 use crate::states::State;
-use log::info;
+use tracing::{info};
 use std::sync::Arc;
 use teloxide::Bot;
 use teloxide::types::Message;
@@ -22,7 +22,15 @@ pub async fn state_dispatcher(
 
     info!("started matching state");
 
+
     let key = (user.id, chat_id);
+
+    if let Some(d) = dialogue.get_dialogue(key) {
+        info!("updated state: {d}, u_id: {}, c_id: {}", key.0, key.1)
+    } else {
+        info!("no state")
+    }
+
     match dialogue.get_dialogue(key) {
         Some(State::TriggeredAddCmd) => {
             info!("processing new sticker name");
@@ -31,6 +39,7 @@ pub async fn state_dispatcher(
         }
 
         Some(State::PerformAdd { .. }) => {
+            info!("init sticker add");
             receive_sticker(bot, msg, dialogue, sticker_store).await?;
             Ok(())
         }

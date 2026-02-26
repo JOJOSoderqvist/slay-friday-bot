@@ -8,11 +8,13 @@ use std::sync::Arc;
 use teloxide::Bot;
 use teloxide::prelude::*;
 use tracing::{error, instrument};
+use crate::repo::dialogue_storage::DialogueStorageKey;
 
 #[instrument(skip(bot, msg, dialogue))]
 pub async fn trigger_rename(
     bot: Bot,
     msg: Message,
+    optional_key: Option<DialogueStorageKey>,
     dialogue: Arc<dyn DialogueStore>,
 ) -> Result<(), ApiError> {
     if !is_user(&msg) {
@@ -21,7 +23,13 @@ pub async fn trigger_rename(
         return Ok(());
     }
 
-    let key = (msg.from.unwrap().id, msg.chat.id);
+    let key = match optional_key {
+        Some(k) => k,
+        None => {
+            (msg.from.unwrap().id, msg.chat.id)
+        }
+    };
+    
     bot.send_message(
         msg.chat.id,
         "Введите название стикера, который хотите переименовать",

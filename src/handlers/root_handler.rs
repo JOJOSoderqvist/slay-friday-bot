@@ -2,7 +2,7 @@ use crate::commands::Command;
 use crate::common::Model;
 use crate::errors::ApiError;
 use crate::handlers::add_sticker::trigger_add;
-use crate::handlers::delete_sticker::delete_sticker;
+use crate::handlers::delete_sticker::{trigger_delete};
 use crate::handlers::friday::friday;
 use crate::handlers::get_sticker::get_sticker;
 use crate::handlers::list_stickers::list_stickers;
@@ -67,15 +67,15 @@ pub async fn handle_command(
 
         Command::ListStickers => list_stickers(bot, msg, sticker_store).await?,
 
-        Command::AddSticker => trigger_add(bot, msg, dialogue).await?,
+        Command::AddSticker => trigger_add(bot, msg, None, dialogue).await?,
 
         Command::Cancel => cancel(bot, msg, dialogue).await?,
 
         Command::Sticker(name) => get_sticker(bot, msg, name, sticker_store).await?,
 
-        Command::RenameSticker => trigger_rename(bot, msg, dialogue).await?,
+        Command::RenameSticker => trigger_rename(bot, msg, None, dialogue).await?,
 
-        Command::DeleteSticker => delete_sticker(bot, msg, dialogue, sticker_store).await?,
+        Command::DeleteSticker => trigger_delete(bot, msg, None, dialogue).await?,
         Command::Slay => slay(bot, msg, dialogue).await?,
     }
 
