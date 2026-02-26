@@ -44,7 +44,12 @@ pub async fn rename_sticker(
     .await?;
 
     let key = (msg.from.unwrap().id, msg.chat.id);
-    dialogue.update_dialogue(key, State::ReceiveNewName {old_name: sticker_name});
+    dialogue.update_dialogue(
+        key,
+        State::ReceiveNewName {
+            old_name: sticker_name,
+        },
+    );
     Ok(())
 }
 
@@ -74,7 +79,7 @@ pub async fn receive_new_sticker_name(
         return Ok(());
     }
 
-    let Some(State::ReceiveNewName {old_name }) = dialogue.get_dialogue(key) else {
+    let Some(State::ReceiveNewName { old_name }) = dialogue.get_dialogue(key) else {
         return Ok(());
     };
 

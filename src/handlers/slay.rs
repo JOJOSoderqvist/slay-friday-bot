@@ -2,9 +2,12 @@ use crate::StickerStore;
 use crate::commands::Command;
 use crate::errors::ApiError;
 use crate::errors::ApiError::DialogueStorageError;
+use crate::handlers::add_sticker::add_sticker;
 use crate::handlers::friday::friday;
 use crate::handlers::list_stickers::list_stickers;
-use crate::handlers::root_handler::{ContentGenerator, MessageStore, MyDialogue, help, DialogueStore};
+use crate::handlers::root_handler::{
+    ContentGenerator, DialogueStore, MessageStore, MyDialogue, help,
+};
 use crate::states::State;
 use crate::utils::{reply_suggestions_keyboard, setup_inline_callback_keyboard};
 use log::{info, warn};
@@ -13,11 +16,14 @@ use strum::IntoEnumIterator;
 use teloxide::Bot;
 use teloxide::prelude::*;
 use teloxide::sugar::request::RequestReplyExt;
-use teloxide::types::{Message};
+use teloxide::types::Message;
 use url::quirks::origin;
-use crate::handlers::add_sticker::add_sticker;
 
-pub async fn slay(bot: Bot, msg: Message, dialogue: Arc<dyn DialogueStore>) -> Result<(), ApiError> {
+pub async fn slay(
+    bot: Bot,
+    msg: Message,
+    dialogue: Arc<dyn DialogueStore>,
+) -> Result<(), ApiError> {
     info!("entered slay command");
     let user = match msg.from {
         None => {
@@ -51,10 +57,13 @@ pub async fn slay(bot: Bot, msg: Message, dialogue: Arc<dyn DialogueStore>) -> R
         .await?;
 
     let key = (msg.from.clone().unwrap().id, msg.chat.id);
-    dialogue.update_dialogue(key, State::ShowInline {
-        user_id: user.id,
-        original_msg: msg,
-    });
+    dialogue.update_dialogue(
+        key,
+        State::ShowInline {
+            user_id: user.id,
+            original_msg: msg,
+        },
+    );
 
     Ok(())
 }
@@ -79,22 +88,19 @@ pub async fn inline_choice_callback(
         }
     };
 
-
     let key = (q.from.id, msg_chat_id);
 
     let (user_id, stored_msg) = match dialogue.get_dialogue(key) {
-        Some(State::ShowInline {user_id, original_msg}) => {
-            (user_id, original_msg)
-        }
-        _ => {
-            return Ok(())
-        }
+        Some(State::ShowInline {
+            user_id,
+            original_msg,
+        }) => (user_id, original_msg),
+        _ => return Ok(()),
     };
 
     if q.from.id != user_id {
         return Ok(());
     }
-
 
     let Some(data) = q.data else {
         warn!("callback had no data");

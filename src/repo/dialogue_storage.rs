@@ -1,18 +1,20 @@
+use crate::handlers::root_handler::DialogueStore;
 use crate::states::State;
 use dashmap::DashMap;
 use std::sync::Arc;
 use teloxide::types::{ChatId, UserId};
-use crate::handlers::root_handler::DialogueStore;
 
 pub type DialogueStorageKey = (UserId, ChatId);
+
+// TODO: Do i need Arc?
 pub struct UserDialogueStorage {
-    storage: Arc<DashMap<DialogueStorageKey, State>>
+    storage: Arc<DashMap<DialogueStorageKey, State>>,
 }
 
 impl UserDialogueStorage {
     pub fn new() -> Self {
         UserDialogueStorage {
-            storage: Arc::new(DashMap::new())
+            storage: Arc::new(DashMap::new()),
         }
     }
 }

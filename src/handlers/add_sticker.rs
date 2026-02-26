@@ -44,9 +44,8 @@ pub async fn add_sticker(
     )
     .await?;
 
-
     let key = (msg.from.unwrap().id, msg.chat.id); // TODO: remove unwrap
-    dialogue.update_dialogue(key, State::ReceiveSticker {name: sticker_name});
+    dialogue.update_dialogue(key, State::ReceiveSticker { name: sticker_name });
 
     info!("UPDATED DIALOGUE FROM ADD STICKER");
 
@@ -65,7 +64,8 @@ pub async fn receive_sticker(
     let user_id = match msg.from.clone().map(|u| u.id) {
         Some(id) => id,
         None => {
-            bot.send_message(msg.chat.id, "Каналы не поддерживаются").await?;
+            bot.send_message(msg.chat.id, "Каналы не поддерживаются")
+                .await?;
             return Ok(());
         }
     };
@@ -73,14 +73,9 @@ pub async fn receive_sticker(
     if let Some(sticker) = msg.sticker() {
         let key = (user_id, msg.chat.id);
         let new_name = match dialogue.get_dialogue(key) {
-            Some(State::ReceiveSticker {name}) => {
-                name
-            }
-            _ => {
-                return Ok(())
-            }
+            Some(State::ReceiveSticker { name }) => name,
+            _ => return Ok(()),
         };
-
 
         info!("NEW NAME: {}", new_name);
 
@@ -96,7 +91,10 @@ pub async fn receive_sticker(
             Err(StickerAlreadyExists) => {
                 bot.send_message(
                     msg.chat.id,
-                    format!("Стикер '{}' уже существует. Попробуйте другое имя", new_name),
+                    format!(
+                        "Стикер '{}' уже существует. Попробуйте другое имя",
+                        new_name
+                    ),
                 )
                 .await?;
 

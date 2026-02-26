@@ -10,6 +10,7 @@ use crate::handlers::list_stickers::list_stickers;
 use crate::handlers::model_info::model_info;
 use crate::handlers::rename_sticker::rename_sticker;
 use crate::handlers::slay::slay;
+use crate::repo::dialogue_storage::DialogueStorageKey;
 use crate::repo::message_history_storage::HistoryEntry;
 use crate::repo::sticker_storage::dto::StickerEntry;
 use crate::states::State;
@@ -21,7 +22,6 @@ use teloxide::dispatching::dialogue::InMemStorage;
 use teloxide::prelude::{Dialogue, Message, Requester};
 use teloxide::utils::command::BotCommands;
 use tracing::instrument;
-use crate::repo::dialogue_storage::DialogueStorageKey;
 
 #[async_trait]
 pub trait ContentGenerator: Send + Sync {
@@ -50,7 +50,6 @@ pub trait DialogueStore: Send + Sync {
     fn update_dialogue(&self, key: DialogueStorageKey, new_state: State) -> Option<State>;
 }
 
-
 pub type MyDialogue = Dialogue<State, InMemStorage<State>>;
 
 #[instrument(skip(bot, generator, cmd, msg, sticker_store, message_store, dialogue))]
@@ -61,7 +60,7 @@ pub async fn handle_command(
     generator: Arc<dyn ContentGenerator>,
     sticker_store: Arc<dyn StickerStore>,
     message_store: Arc<dyn MessageStore>,
-    dialogue: Arc<dyn DialogueStore>
+    dialogue: Arc<dyn DialogueStore>,
 ) -> Result<(), ApiError> {
     match cmd {
         Command::Help => help(bot, msg).await?,

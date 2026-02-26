@@ -17,26 +17,23 @@ use crate::config::BotConfig;
 use crate::generation_controller::{ContentRephraser, GenerationController, ModelPool};
 use crate::gigachat_api::api::GigaChatApi;
 use crate::grok_api::api::GrokApi;
-use crate::handlers::add_sticker::receive_sticker;
-use crate::handlers::rename_sticker::receive_new_sticker_name;
-use crate::handlers::root_handler::{ContentGenerator, MessageStore, StickerStore, handle_command, DialogueStore};
+use crate::handlers::root_handler::{
+    handle_command, ContentGenerator, DialogueStore, MessageStore, StickerStore,
+};
 use crate::handlers::slay::inline_choice_callback;
+use crate::handlers::state_dispatcher::state_dispatcher;
 use crate::mistral_api::api::MistralApi;
+use crate::repo::dialogue_storage::UserDialogueStorage;
 use crate::repo::message_history_storage::MessageHistoryStorage;
 use crate::repo::sticker_storage::storage::StickerStorage;
-use crate::states::State;
 use std::process;
 use std::sync::Arc;
 use teloxide::dispatching::UpdateFilterExt;
-use teloxide::dispatching::dialogue::InMemStorage;
-use teloxide::dptree::case;
 use teloxide::prelude::*;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{EnvFilter, fmt};
+use tracing_subscriber::{fmt, EnvFilter};
 use url::Url;
-use crate::handlers::state_dispatcher::state_dispatcher;
-use crate::repo::dialogue_storage::UserDialogueStorage;
 
 #[tokio::main]
 async fn main() {
@@ -125,9 +122,7 @@ async fn main() {
 
     let dialogue_store = Arc::new(UserDialogueStorage::new()) as Arc<dyn DialogueStore>;
 
-
-    let callback_handler = Update::filter_callback_query()
-        .endpoint(inline_choice_callback);
+    let callback_handler = Update::filter_callback_query().endpoint(inline_choice_callback);
 
     let message_handler = Update::filter_message()
         .branch(command_handler)
