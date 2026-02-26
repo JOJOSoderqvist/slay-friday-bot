@@ -47,7 +47,7 @@ pub async fn delete_sticker(
         return Ok(());
     };
 
-    let Some(State::TriggeredAddCmd) = get_current_state(&msg, dialogue.clone()) else {
+    let Some(State::TriggerDeleteCmd) = get_current_state(&msg, dialogue.clone()) else {
         return Ok(());
     };
 
