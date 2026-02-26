@@ -1,6 +1,7 @@
 use crate::errors::ApiError;
-use crate::errors::ApiError::{DialogueStorageError, StickerAlreadyExists};
-use crate::handlers::root_handler::{DialogueStore, MyDialogue, StickerStore};
+use crate::errors::ApiError::{StickerAlreadyExists};
+use crate::handlers::root_handler::{DialogueStore, StickerStore};
+use crate::handlers::utils::{get_current_state, get_key, is_user};
 use crate::states::State;
 use log::info;
 use std::sync::Arc;
@@ -8,24 +9,55 @@ use teloxide::Bot;
 use teloxide::prelude::*;
 use tracing::{error, instrument};
 
-#[instrument(skip(bot, msg, dialogue, sticker_name, sticker_store))]
-pub async fn rename_sticker(
+#[instrument(skip(bot, msg, dialogue))]
+pub async fn trigger_rename(
     bot: Bot,
     msg: Message,
     dialogue: Arc<dyn DialogueStore>,
-    sticker_name: String,
-    sticker_store: Arc<dyn StickerStore>,
 ) -> Result<(), ApiError> {
-    if sticker_name.trim().is_empty() {
-        bot.send_message(msg.chat.id, "Пожалуйста, укажите название")
+    if !is_user(&msg) {
+        bot.send_message(msg.chat.id, "Каналы не поддерживаются")
             .await?;
         return Ok(());
     }
 
-    if !sticker_store
-        .is_already_created(sticker_name.as_str())
-        .await
-    {
+    let key = (msg.from.unwrap().id, msg.chat.id);
+    bot.send_message(
+        msg.chat.id,
+        "Введите название стикера, который хотите переименовать",
+    )
+    .await?;
+    dialogue.update_dialogue(key, State::TriggeredRenameCmd);
+    Ok(())
+}
+
+#[instrument(skip(bot, msg, dialogue, sticker_store))]
+pub async fn rename_sticker(
+    bot: Bot,
+    msg: Message,
+    dialogue: Arc<dyn DialogueStore>,
+    sticker_store: Arc<dyn StickerStore>,
+) -> Result<(), ApiError> {
+    let Some(key) = get_key(&msg) else {
+        bot.send_message(msg.chat.id, "Каналы не поддерживаются")
+            .await?;
+        return Ok(());
+    };
+
+    let Some(State::TriggeredRenameCmd) = get_current_state(&msg, dialogue.clone()) else {
+        return Ok(());
+    };
+
+    let Some(sticker_name) = msg.text() else {
+        bot.send_message(
+            msg.chat.id,
+            "Сообщение пустое, либо это не текстовое сообщение",
+        )
+        .await?;
+        return Ok(());
+    };
+
+    if !sticker_store.is_already_created(sticker_name).await {
         bot.send_message(
             msg.chat.id,
             format!(
@@ -37,60 +69,48 @@ pub async fn rename_sticker(
         return Ok(());
     };
 
-    bot.send_message(
-        msg.chat.id,
-        format!("Отправь новое имя для стикера '{}'", sticker_name),
-    )
-    .await?;
-
-    let key = (msg.from.unwrap().id, msg.chat.id);
     dialogue.update_dialogue(
         key,
-        State::ReceiveNewName {
-            old_name: sticker_name,
+        State::PerformRename {
+            old_name: sticker_name.to_string(),
         },
     );
+    bot.send_message(msg.chat.id, "Введите новое название")
+        .await?;
+
     Ok(())
 }
 
-pub async fn receive_new_sticker_name(
+pub async fn process_new_sticker_name(
     bot: Bot,
     msg: Message,
     dialogue: Arc<dyn DialogueStore>,
     sticker_store: Arc<dyn StickerStore>,
 ) -> Result<(), ApiError> {
-    let key = (msg.from.clone().unwrap().id, msg.chat.id);
-
-    let new_sticker_name = if let Some(name) = msg.text() {
-        name
-    } else {
-        bot.send_message(msg.chat.id, "Это сообщение - не текст".to_string())
+    let Some(key) = get_key(&msg) else {
+        bot.send_message(msg.chat.id, "Каналы не поддерживаются")
             .await?;
-
-        dialogue.remove_dialogue(key);
         return Ok(());
     };
 
-    if new_sticker_name.trim().is_empty() {
-        bot.send_message(msg.chat.id, "Пожалуйста, укажите название".to_string())
-            .await?;
-
-        dialogue.remove_dialogue(key);
+    let Some(State::PerformRename { old_name }) = get_current_state(&msg, dialogue.clone()) else {
         return Ok(());
-    }
+    };
 
-    let Some(State::ReceiveNewName { old_name }) = dialogue.get_dialogue(key) else {
+    let Some(new_name) = msg.text() else {
+        bot.send_message(msg.chat.id, "Сообщение пустое, пожалуйста укажите название")
+            .await?;
         return Ok(());
     };
 
     match sticker_store
-        .rename_sticker(old_name.as_str(), new_sticker_name)
+        .rename_sticker(old_name.as_str(), new_name)
         .await
     {
         Ok(_) => {
             bot.send_message(
                 msg.chat.id,
-                format!("Новое имя '{}' сохранено! 🎉", new_sticker_name),
+                format!("Новое имя '{}' сохранено! 🎉", new_name),
             )
             .await?;
 
@@ -98,17 +118,15 @@ pub async fn receive_new_sticker_name(
         }
 
         Err(StickerAlreadyExists) => {
-            info!("Sticker with name {} already exists", new_sticker_name);
+            info!("Sticker with name {} already exists", new_name);
             bot.send_message(
                 msg.chat.id,
                 format!(
                     "Стикер с именем {} уже существует, попробуй другое",
-                    new_sticker_name
+                    new_name
                 ),
             )
             .await?;
-
-            dialogue.remove_dialogue(key);
         }
 
         Err(e) => {

@@ -1,13 +1,13 @@
 use crate::StickerStore;
 use crate::commands::Command;
 use crate::errors::ApiError;
-use crate::errors::ApiError::DialogueStorageError;
-use crate::handlers::add_sticker::add_sticker;
+use crate::handlers::add_sticker::trigger_add;
+use crate::handlers::delete_sticker::trigger_delete;
 use crate::handlers::friday::friday;
 use crate::handlers::list_stickers::list_stickers;
-use crate::handlers::root_handler::{
-    ContentGenerator, DialogueStore, MessageStore, MyDialogue, help,
-};
+use crate::handlers::rename_sticker::trigger_rename;
+use crate::handlers::root_handler::{ContentGenerator, DialogueStore, MessageStore, help};
+use crate::handlers::utils::is_user;
 use crate::states::State;
 use crate::utils::{reply_suggestions_keyboard, setup_inline_callback_keyboard};
 use log::{info, warn};
@@ -17,30 +17,20 @@ use teloxide::Bot;
 use teloxide::prelude::*;
 use teloxide::sugar::request::RequestReplyExt;
 use teloxide::types::Message;
-use url::quirks::origin;
 
 pub async fn slay(
     bot: Bot,
     msg: Message,
     dialogue: Arc<dyn DialogueStore>,
 ) -> Result<(), ApiError> {
-    info!("entered slay command");
-    let user = match msg.from {
-        None => {
-            bot.send_message(msg.chat.id, "Каналы не поддерживаются")
-                .await?;
-            return Ok(());
-        }
-        Some(ref id) => id,
-    };
+    if !is_user(&msg) {
+        bot.send_message(msg.chat.id, "Каналы не поддерживаются")
+            .await?;
+        return Ok(());
+    }
 
     let available_commands = Command::iter()
-        .filter(|cmd| {
-            *cmd != Command::Slay
-                && *cmd != Command::Model
-                // && *cmd != Command::AddSticker(String::new())
-                && *cmd != Command::RenameSticker(String::new())
-        })
+        .filter(|cmd| *cmd != Command::Slay && *cmd != Command::Model)
         .collect();
 
     let inline_keyboard = match setup_inline_callback_keyboard(available_commands, 4) {
@@ -60,8 +50,8 @@ pub async fn slay(
     dialogue.update_dialogue(
         key,
         State::ShowInline {
-            user_id: user.id,
-            original_msg: msg,
+            user_id: key.0,
+            original_msg: Box::new(msg),
         },
     );
 
@@ -81,14 +71,19 @@ pub async fn inline_choice_callback(
     bot.answer_callback_query(q.id).await?;
 
     // TODO: Бредик
-    let msg_chat_id = match q.message {
-        Some(msg) => msg.chat().id,
+    let original_msg = match q.message {
+        Some(msg) => {
+            if msg.regular_message().is_none() {
+                warn!("message does not exist");
+            }
+            msg.regular_message().unwrap().clone() // TODO: is clone necessary?
+        }
         None => {
             return Ok(());
         }
     };
 
-    let key = (q.from.id, msg_chat_id);
+    let key = (q.from.id, original_msg.chat.id);
 
     let (user_id, stored_msg) = match dialogue.get_dialogue(key) {
         Some(State::ShowInline {
@@ -110,21 +105,23 @@ pub async fn inline_choice_callback(
     match data.parse::<Command>()? {
         Command::Help => {
             info!("help cmd parsed");
-            help(bot, stored_msg).await?;
+            help(bot, *stored_msg).await?;
             dialogue.remove_dialogue(key);
             Ok(())
         }
         Command::Friday => {
-            friday(bot, stored_msg, generator, message_store).await?;
             dialogue.remove_dialogue(key);
+            friday(bot, *stored_msg, generator, message_store).await?;
             Ok(())
         }
         Command::ListStickers => {
-            list_stickers(bot, stored_msg, sticker_store).await?;
             dialogue.remove_dialogue(key);
+            list_stickers(bot, *stored_msg, sticker_store).await?;
             Ok(())
         }
         Command::Sticker(_) => {
+            dialogue.remove_dialogue(key);
+
             let stickers_list = sticker_store.list_stickers().await;
             let mut available_stickers = match stickers_list {
                 None => {
@@ -146,7 +143,7 @@ pub async fn inline_choice_callback(
                 .reply_to(stored_msg.id)
                 .reply_markup(keyboard)
                 .await?;
-            dialogue.remove_dialogue(key);
+
             Ok(())
         }
         Command::Cancel => {
@@ -154,9 +151,22 @@ pub async fn inline_choice_callback(
             Ok(())
         }
 
-        Command::AddSticker(_) => {
-            todo!()
-            // add_sticker(bot, stored_msg, dialogue)
+        Command::AddSticker => {
+            dialogue.remove_dialogue(key);
+            trigger_add(bot, original_msg, dialogue).await?;
+            Ok(())
+        }
+
+        Command::RenameSticker => {
+            dialogue.remove_dialogue(key);
+            trigger_rename(bot, original_msg, dialogue).await?;
+            Ok(())
+        }
+
+        Command::DeleteSticker => {
+            dialogue.remove_dialogue(key);
+            trigger_delete(bot, original_msg, dialogue).await?;
+            Ok(())
         }
         cmd => {
             bot.send_message(

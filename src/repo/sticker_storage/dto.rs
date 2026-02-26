@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
-use std::mem::swap;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Ord, PartialOrd, Eq)]
 pub struct StickerEntry {

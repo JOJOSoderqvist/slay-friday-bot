@@ -1,14 +1,12 @@
 use crate::errors::ApiError;
-use crate::handlers::add_sticker::receive_sticker;
-use crate::handlers::rename_sticker::receive_new_sticker_name;
-use crate::handlers::root_handler::{ContentGenerator, DialogueStore, MessageStore, StickerStore};
-use crate::handlers::slay::inline_choice_callback;
+use crate::handlers::add_sticker::{process_new_name, receive_sticker};
+use crate::handlers::delete_sticker::delete_sticker;
+use crate::handlers::rename_sticker::{process_new_sticker_name, rename_sticker};
+use crate::handlers::root_handler::{DialogueStore, StickerStore};
 use crate::states::State;
 use log::info;
-use mockall::predicate::ge;
 use std::sync::Arc;
 use teloxide::Bot;
-use teloxide::prelude::CallbackQuery;
 use teloxide::types::Message;
 
 pub async fn state_dispatcher(
@@ -26,20 +24,31 @@ pub async fn state_dispatcher(
 
     let key = (user.id, chat_id);
     match dialogue.get_dialogue(key) {
-        Some(State::ReceiveNewName { .. }) => {
-            receive_new_sticker_name(bot, msg, dialogue, sticker_store).await?;
+        Some(State::TriggeredAddCmd) => {
+            info!("processing new sticker name");
+            process_new_name(bot, msg, dialogue, sticker_store).await?;
             Ok(())
         }
-        Some(State::ReceiveSticker { .. }) => {
-            info!("MATCHER STICKER RECEIVE STATE");
 
+        Some(State::PerformAdd { .. }) => {
             receive_sticker(bot, msg, dialogue, sticker_store).await?;
             Ok(())
         }
-        // Some(State::ShowInline { .. }) => {
-        //     inline_choice_callback(bot, q, generator, message_store, sticker_store, dialogue).await?;
-        //     Ok(())
-        // }
+
+        Some(State::TriggeredRenameCmd) => {
+            rename_sticker(bot, msg, dialogue, sticker_store).await?;
+            Ok(())
+        }
+
+        Some(State::PerformRename { .. }) => {
+            process_new_sticker_name(bot, msg, dialogue, sticker_store).await?;
+            Ok(())
+        }
+
+        Some(State::TriggerDeleteCmd) => {
+            delete_sticker(bot, msg, dialogue, sticker_store).await?;
+            Ok(())
+        }
         None | Some(_) => Ok(()),
     }
 }

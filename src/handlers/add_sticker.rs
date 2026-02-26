@@ -1,32 +1,62 @@
 use crate::errors::ApiError;
-use crate::errors::ApiError::{DialogueStorageError, StickerAlreadyExists};
-use crate::handlers::root_handler::{DialogueStore, MyDialogue, StickerStore};
+use crate::errors::ApiError::{StickerAlreadyExists};
+use crate::handlers::root_handler::{DialogueStore, StickerStore};
+use crate::handlers::utils::{get_current_state, get_key, is_user};
 use crate::repo::sticker_storage::dto::StickerEntry;
 use crate::states::State;
-use log::{debug, info};
 use std::sync::Arc;
 use teloxide::Bot;
 use teloxide::prelude::*;
 use tracing::{error, instrument};
 
-#[instrument(skip(bot, msg, dialogue, sticker_name, sticker_store))]
-pub async fn add_sticker(
+#[instrument(skip(bot, msg, dialogue))]
+pub async fn trigger_add(
     bot: Bot,
     msg: Message,
     dialogue: Arc<dyn DialogueStore>,
-    sticker_name: String,
-    sticker_store: Arc<dyn StickerStore>,
 ) -> Result<(), ApiError> {
-    if sticker_name.trim().is_empty() {
-        bot.send_message(msg.chat.id, "Пожалуйста, укажите название: /add <name>")
+    if !is_user(&msg) {
+        bot.send_message(msg.chat.id, "Каналы не поддерживаются")
             .await?;
         return Ok(());
     }
 
-    if sticker_store
-        .is_already_created(sticker_name.as_str())
-        .await
-    {
+    let key = (msg.from.unwrap().id, msg.chat.id);
+
+    bot.send_message(msg.chat.id, "Введите название стикера")
+        .await?;
+    dialogue.update_dialogue(key, State::TriggeredAddCmd);
+
+    Ok(())
+}
+
+#[instrument(skip(bot, msg, dialogue, sticker_store))]
+pub async fn process_new_name(
+    bot: Bot,
+    msg: Message,
+    dialogue: Arc<dyn DialogueStore>,
+    sticker_store: Arc<dyn StickerStore>,
+) -> Result<(), ApiError> {
+    let Some(key) = get_key(&msg) else {
+        bot.send_message(msg.chat.id, "Каналы не поддерживаются")
+            .await?;
+        return Ok(());
+    };
+
+    let Some(State::TriggeredAddCmd) = get_current_state(&msg, dialogue.clone()) else {
+        return Ok(());
+    };
+
+    let Some(sticker_name) = msg.text() else {
+        bot.send_message(
+            msg.chat.id,
+            "Сообщение пустое, либо это не текстовое сообщение",
+        )
+        .await?;
+        return Ok(());
+    };
+
+    if sticker_store.is_already_created(sticker_name).await {
         bot.send_message(
             msg.chat.id,
             format!(
@@ -38,16 +68,14 @@ pub async fn add_sticker(
         return Ok(());
     };
 
-    bot.send_message(
-        msg.chat.id,
-        format!("Отправь мне стикер для '{}'", sticker_name),
-    )
-    .await?;
+    dialogue.update_dialogue(
+        key,
+        State::PerformAdd {
+            sticker_name: sticker_name.to_string(),
+        },
+    );
 
-    let key = (msg.from.unwrap().id, msg.chat.id); // TODO: remove unwrap
-    dialogue.update_dialogue(key, State::ReceiveSticker { name: sticker_name });
-
-    info!("UPDATED DIALOGUE FROM ADD STICKER");
+    bot.send_message(msg.chat.id, "Отправьте стикер").await?;
 
     Ok(())
 }
@@ -59,32 +87,26 @@ pub async fn receive_sticker(
     dialogue: Arc<dyn DialogueStore>,
     sticker_store: Arc<dyn StickerStore>,
 ) -> Result<(), ApiError> {
-    info!("RECEIVED STICKER");
+    let Some(key) = get_key(&msg) else {
+        bot.send_message(msg.chat.id, "Каналы не поддерживаются")
+            .await?;
+        return Ok(());
+    };
 
-    let user_id = match msg.from.clone().map(|u| u.id) {
-        Some(id) => id,
-        None => {
-            bot.send_message(msg.chat.id, "Каналы не поддерживаются")
-                .await?;
-            return Ok(());
-        }
+    let Some(State::PerformAdd { sticker_name }) = get_current_state(&msg, dialogue.clone()) else {
+        return Ok(());
     };
 
     if let Some(sticker) = msg.sticker() {
-        let key = (user_id, msg.chat.id);
-        let new_name = match dialogue.get_dialogue(key) {
-            Some(State::ReceiveSticker { name }) => name,
-            _ => return Ok(()),
-        };
-
-        info!("NEW NAME: {}", new_name);
-
-        let entry = StickerEntry::new(new_name.clone(), sticker.file.id.clone().to_string());
+        let entry = StickerEntry::new(sticker_name.clone(), sticker.file.id.clone().to_string());
 
         match sticker_store.add_sticker(entry).await {
             Ok(_) => {
-                bot.send_message(msg.chat.id, format!("Стикер '{}' сохранен! 🎉", new_name))
-                    .await?;
+                bot.send_message(
+                    msg.chat.id,
+                    format!("Стикер '{}' сохранен! 🎉", sticker_name),
+                )
+                .await?;
 
                 dialogue.remove_dialogue(key);
             }
@@ -93,12 +115,10 @@ pub async fn receive_sticker(
                     msg.chat.id,
                     format!(
                         "Стикер '{}' уже существует. Попробуйте другое имя",
-                        new_name
+                        sticker_name
                     ),
                 )
                 .await?;
-
-                dialogue.remove_dialogue(key);
             }
 
             Err(e) => {
@@ -114,8 +134,6 @@ pub async fn receive_sticker(
             }
         }
     } else {
-        debug!("Not a sticker");
-
         bot.send_message(msg.chat.id, "Это не стикер. Отправьте стикер или /cancel.")
             .await?;
     }

@@ -3,7 +3,7 @@ use chrono::{Datelike, Duration, Utc, Weekday};
 use chrono_tz::Europe::Moscow;
 use std::fmt::Display;
 use teloxide::types::{
-    CopyTextButton, InlineKeyboardButton, InlineKeyboardButtonKind, InlineKeyboardMarkup,
+    InlineKeyboardButton, InlineKeyboardMarkup,
     KeyboardButton, KeyboardMarkup, ReplyMarkup,
 };
 

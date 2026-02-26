@@ -1,14 +1,13 @@
 use crate::commands::Command;
 use crate::common::Model;
 use crate::errors::ApiError;
-use crate::errors::ApiError::DialogueStorageError;
-use crate::handlers::add_sticker::add_sticker;
-use crate::handlers::delete::delete_sticker;
+use crate::handlers::add_sticker::trigger_add;
+use crate::handlers::delete_sticker::delete_sticker;
 use crate::handlers::friday::friday;
 use crate::handlers::get_sticker::get_sticker;
 use crate::handlers::list_stickers::list_stickers;
 use crate::handlers::model_info::model_info;
-use crate::handlers::rename_sticker::rename_sticker;
+use crate::handlers::rename_sticker::trigger_rename;
 use crate::handlers::slay::slay;
 use crate::repo::dialogue_storage::DialogueStorageKey;
 use crate::repo::message_history_storage::HistoryEntry;
@@ -18,8 +17,7 @@ use async_trait::async_trait;
 use log::info;
 use std::sync::Arc;
 use teloxide::Bot;
-use teloxide::dispatching::dialogue::InMemStorage;
-use teloxide::prelude::{Dialogue, Message, Requester};
+use teloxide::prelude::{Message, Requester};
 use teloxide::utils::command::BotCommands;
 use tracing::instrument;
 
@@ -50,8 +48,6 @@ pub trait DialogueStore: Send + Sync {
     fn update_dialogue(&self, key: DialogueStorageKey, new_state: State) -> Option<State>;
 }
 
-pub type MyDialogue = Dialogue<State, InMemStorage<State>>;
-
 #[instrument(skip(bot, generator, cmd, msg, sticker_store, message_store, dialogue))]
 pub async fn handle_command(
     bot: Bot,
@@ -71,17 +67,15 @@ pub async fn handle_command(
 
         Command::ListStickers => list_stickers(bot, msg, sticker_store).await?,
 
-        Command::AddSticker(name) => add_sticker(bot, msg, dialogue, name, sticker_store).await?,
+        Command::AddSticker => trigger_add(bot, msg, dialogue).await?,
 
         Command::Cancel => cancel(bot, msg, dialogue).await?,
 
         Command::Sticker(name) => get_sticker(bot, msg, name, sticker_store).await?,
 
-        Command::RenameSticker(old_name) => {
-            rename_sticker(bot, msg, dialogue, old_name, sticker_store).await?
-        }
+        Command::RenameSticker => trigger_rename(bot, msg, dialogue).await?,
 
-        Command::DeleteSticker(name) => delete_sticker(bot, msg, name, sticker_store).await?,
+        Command::DeleteSticker => delete_sticker(bot, msg, dialogue, sticker_store).await?,
         Command::Slay => slay(bot, msg, dialogue).await?,
     }
 
@@ -98,7 +92,9 @@ pub async fn help(bot: Bot, msg: Message) -> Result<(), ApiError> {
 
 async fn cancel(bot: Bot, msg: Message, dialogue: Arc<dyn DialogueStore>) -> Result<(), ApiError> {
     let key = (msg.from.unwrap().id, msg.chat.id);
-    dialogue.remove_dialogue(key);
-    bot.send_message(msg.chat.id, "Операция отменена.").await?;
+    if dialogue.get_dialogue(key).is_some() {
+        dialogue.remove_dialogue(key);
+        bot.send_message(msg.chat.id, "Операция отменена.").await?;
+    }
     Ok(())
 }

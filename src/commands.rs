@@ -2,7 +2,7 @@ use crate::errors::ApiError;
 use crate::errors::ApiError::CommandConversionError;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
-use strum::{EnumIter, VariantArray};
+use strum::EnumIter;
 use teloxide::utils::command::BotCommands;
 
 #[derive(BotCommands, Clone)]
@@ -28,17 +28,17 @@ pub enum Command {
     #[command(rename = "list_stickers", description = "Показать доступные стикеры", aliases = ["list"])]
     ListStickers,
 
-    #[command(rename="add_sticker", description = "Добавляет новый стикер.\nНапример, /add_sticker xdd или /add xdd.",
+    #[command(rename="add_sticker", description = "Добавляет новый стикер.",
     aliases = ["add"])]
-    AddSticker(String),
+    AddSticker,
 
-    #[command(rename="rename_sticker", description = "Переименовывает существующий стикер.\nНапример, /rename_sticker xdd или /rename xdd.",
+    #[command(rename="rename_sticker", description = "Переименовывает существующий стикер.",
     aliases = ["rename"])]
-    RenameSticker(String),
+    RenameSticker,
 
-    #[command(rename="delete_sticker", description = "Удаляет существующий стикер.\nНапример, /delete_sticker xdd или /delete xdd.",
+    #[command(rename="delete_sticker", description = "Удаляет существующий стикер.",
     aliases = ["delete", "remove_sticker", "remove"])]
-    DeleteSticker(String),
+    DeleteSticker,
 
     #[command(description = "Отмена операции в рамках диалога")]
     Cancel,
@@ -53,9 +53,9 @@ impl Display for Command {
             Command::Model => "/model",
             Command::Sticker(_) => "/get",
             Command::ListStickers => "/list",
-            Command::AddSticker(_) => "/add",
-            Command::RenameSticker(_) => "/rename",
-            Command::DeleteSticker(_) => "/delete",
+            Command::AddSticker => "/add",
+            Command::RenameSticker => "/rename",
+            Command::DeleteSticker => "/delete",
             Command::Cancel => "/cancel",
         })
     }
@@ -71,9 +71,9 @@ impl FromStr for Command {
             "/friday" => Ok(Command::Friday),
             "/model" => Ok(Command::Model),
             "/get" => Ok(Command::Sticker(String::default())), // TODO: Additional alloc?
-            "/add" => Ok(Command::AddSticker(String::default())),
+            "/add" => Ok(Command::AddSticker),
             "/list" => Ok(Command::ListStickers),
-            "/rename" => Ok(Command::RenameSticker(String::default())),
+            "/rename" => Ok(Command::RenameSticker),
             "/cancel" => Ok(Command::Cancel),
             cmd => Err(CommandConversionError(format!("Unknown command: {}", cmd))),
         }

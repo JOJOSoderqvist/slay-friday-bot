@@ -1,5 +1,5 @@
 pub mod add_sticker;
-mod delete;
+mod delete_sticker;
 mod friday;
 mod get_sticker;
 mod list_stickers;
@@ -8,3 +8,4 @@ pub mod rename_sticker;
 pub mod root_handler;
 pub mod slay;
 pub mod state_dispatcher;
+mod utils;

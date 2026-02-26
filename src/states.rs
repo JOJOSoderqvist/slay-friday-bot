@@ -1,20 +1,21 @@
-use teloxide::types::{Message, MessageId, UserId};
+use strum::Display;
+use teloxide::types::{Message, UserId};
 
-#[derive(Clone, Default)]
+#[derive(Clone, Display)]
 pub enum State {
-    #[default]
-    Start,
-    ReceiveSticker {
-        name: String,
+    TriggeredAddCmd,
+    PerformAdd {
+        sticker_name: String,
     },
-    ReceiveNewName {
+    TriggeredRenameCmd,
+    PerformRename {
         old_name: String,
     },
+
+    TriggerDeleteCmd,
+
     ShowInline {
         user_id: UserId,
-        original_msg: Message,
-    },
-    ShowOutline {
-        user_id: UserId,
+        original_msg: Box<Message>,
     },
 }
