@@ -73,7 +73,7 @@ pub fn reply_suggestions_keyboard<T: ToString>(data: &[T], cmd: Option<Command>)
     let mut keyboard = KeyboardMarkup::new(rows);
     keyboard.selective = true;
     keyboard.resize_keyboard = true;
-    keyboard.one_time_keyboard = true;
+    // keyboard.one_time_keyboard = true;
 
     ReplyMarkup::Keyboard(keyboard)
 }
