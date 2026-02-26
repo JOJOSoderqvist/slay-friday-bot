@@ -60,6 +60,9 @@ pub enum ApiError {
 
     #[error("Dialogue storage error: {0}")]
     DialogueStorageError(#[from] InMemStorageError),
+
+    #[error("Command conversion error, unknown command: {0}")]
+    CommandConversionError(String),
 }
 
 #[derive(Error, Debug)]
@@ -78,6 +81,7 @@ pub enum RepoError {
 
     #[error("Failed to change file {0}")]
     ChangeFileError(#[source] std::io::Error),
+    // #[error()]
 }
 
 #[derive(Error, Debug)]

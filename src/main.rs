@@ -17,16 +17,18 @@ use crate::config::BotConfig;
 use crate::generation_controller::{ContentRephraser, GenerationController, ModelPool};
 use crate::gigachat_api::api::GigaChatApi;
 use crate::grok_api::api::GrokApi;
-use crate::handlers::{ContentGenerator, MessageStore, StickerStore, handle_command};
+use crate::handlers::root_handler::{
+    ContentGenerator, DialogueStore, MessageStore, StickerStore, handle_command,
+};
+use crate::handlers::slay::inline_choice_callback;
+use crate::handlers::state_dispatcher::state_dispatcher;
 use crate::mistral_api::api::MistralApi;
+use crate::repo::dialogue_storage::UserDialogueStorage;
 use crate::repo::message_history_storage::MessageHistoryStorage;
 use crate::repo::sticker_storage::storage::StickerStorage;
-use crate::states::State;
 use std::process;
 use std::sync::Arc;
 use teloxide::dispatching::UpdateFilterExt;
-use teloxide::dispatching::dialogue::InMemStorage;
-use teloxide::dptree::case;
 use teloxide::prelude::*;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -99,33 +101,43 @@ async fn main() {
     subscriber.init();
     tokio::spawn(task);
 
-    type MyDialogue = Dialogue<State, InMemStorage<State>>;
-    let handler = dptree::entry().branch(
-        Update::filter_message()
-            .enter_dialogue::<Message, InMemStorage<State>, State>()
-            .branch(
-                dptree::entry()
-                    .filter_command::<Command>()
-                    .endpoint(handle_command),
-            )
-            .branch(
-                dptree::filter_map_async(|dialogue: MyDialogue| async move {
-                    dialogue.get().await.ok().flatten()
-                })
-                .branch(case![State::ReceiveSticker { name }].endpoint(handlers::receive_sticker))
-                .branch(
-                    case![State::ReceiveNewName { old_name }]
-                        .endpoint(handlers::receive_new_sticker_name),
-                ),
-            ),
-    );
+    let command_handler = dptree::entry()
+        .filter_command::<Command>()
+        .endpoint(handle_command);
+    //
+    // // let state_handler = dptree::entry()
+    // //     .branch(case![State::ReceiveSticker { name }].endpoint(receive_sticker))
+    // //     .branch(case![State::ReceiveNewName { old_name }].endpoint(receive_new_sticker_name));
+    //
+    // let callback_handler = Update::filter_callback_query()
+    //     .endpoint(inline_choice_callback);
+    //
+    // let message_handler = Update::filter_message()
+    //     .branch(command_handler)
+    //     .endpoint(state_dispatcher);
+    //
+    // let handler = dptree::entry()
+    //     .branch(message_handler)
+    //     .branch(callback_handler);
+
+    let dialogue_store = Arc::new(UserDialogueStorage::new()) as Arc<dyn DialogueStore>;
+
+    let callback_handler = Update::filter_callback_query().endpoint(inline_choice_callback);
+
+    let message_handler = Update::filter_message()
+        .branch(command_handler)
+        .endpoint(state_dispatcher);
+
+    let handler = dptree::entry()
+        .branch(message_handler)
+        .branch(callback_handler);
 
     Dispatcher::builder(bot, handler)
         .dependencies(dptree::deps![
             generation_controller,
             sticker_storage,
             message_history_storage,
-            InMemStorage::<State>::new()
+            dialogue_store
         ])
         .enable_ctrlc_handler()
         .default_handler(|_upd| async {})
