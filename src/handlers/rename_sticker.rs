@@ -3,7 +3,6 @@ use crate::errors::ApiError::StickerAlreadyExists;
 use crate::handlers::root_handler::{DialogueStore, StickerStore};
 use crate::handlers::utils::{get_current_state, get_key, get_user_id_from_option};
 use crate::states::State;
-use log::info;
 use std::sync::Arc;
 use teloxide::Bot;
 use teloxide::prelude::*;
@@ -121,7 +120,6 @@ pub async fn process_new_sticker_name(
         }
 
         Err(StickerAlreadyExists) => {
-            info!("Sticker with name {} already exists", new_name);
             bot.send_message(
                 msg.chat.id,
                 format!(

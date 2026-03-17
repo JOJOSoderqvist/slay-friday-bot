@@ -14,7 +14,6 @@ use crate::repo::message_history_storage::HistoryEntry;
 use crate::repo::sticker_storage::dto::StickerEntry;
 use crate::states::State;
 use async_trait::async_trait;
-use log::info;
 use std::sync::Arc;
 use teloxide::Bot;
 use teloxide::prelude::{Message, Requester};
@@ -85,7 +84,6 @@ pub async fn handle_command(
 
 #[instrument(skip(bot, chat_id))]
 pub async fn help(bot: Bot, chat_id: ChatId) -> Result<(), ApiError> {
-    info!("Help command");
     bot.send_message(chat_id, Command::descriptions().to_string())
         .await?;
     Ok(())

@@ -15,7 +15,7 @@ use teloxide::Bot;
 use teloxide::dispatching::dialogue::GetChatId;
 use teloxide::prelude::*;
 use teloxide::types::User;
-use tracing::{info, warn};
+use tracing:: warn;
 
 pub async fn slay(bot: Bot, chat_id: ChatId, from: Option<User>) -> Result<(), ApiError> {
     let Some(_) = get_user_id_from_option(&from) else {
@@ -51,8 +51,6 @@ pub async fn inline_choice_callback(
     sticker_store: Arc<dyn StickerStore>,
     dialogue: Arc<dyn DialogueStore>,
 ) -> Result<(), ApiError> {
-    info!("entering callback");
-
     bot.answer_callback_query(q.id.clone()).await?;
 
     let Some(chat_id) = q.chat_id() else {
