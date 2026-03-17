@@ -7,10 +7,10 @@ use teloxide::Bot;
 use teloxide::prelude::*;
 use tracing::{error, instrument};
 
-#[instrument(skip(bot, msg, generator, store))]
+#[instrument(skip(bot, chat_id, generator, store))]
 pub async fn friday(
     bot: Bot,
-    msg: Message,
+    chat_id: ChatId,
     generator: Arc<dyn ContentGenerator>,
     store: Arc<dyn MessageStore>,
 ) -> Result<(), ApiError> {
@@ -29,11 +29,11 @@ pub async fn friday(
                 .add_message(HistoryEntry::new(model_name, new_text.clone()))
                 .await;
 
-            bot.send_message(msg.chat.id, new_text).await?;
+            bot.send_message(chat_id, new_text).await?;
         }
         Err(err) => {
             error!(error = %err, "Failed to rephrase text");
-            bot.send_message(msg.chat.id, text).await?;
+            bot.send_message(chat_id, text).await?;
         }
     }
 

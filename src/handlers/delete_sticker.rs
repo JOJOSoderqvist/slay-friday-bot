@@ -1,33 +1,29 @@
 use crate::errors::ApiError;
 use crate::handlers::root_handler::{DialogueStore, StickerStore};
-use crate::handlers::utils::{get_current_state, get_key, is_user};
+use crate::handlers::utils::{get_current_state, get_key, get_user_id_from_option};
 use crate::states::State;
 use std::sync::Arc;
 use teloxide::Bot;
 use teloxide::prelude::*;
+use teloxide::types::User;
 use tracing::{error, instrument};
-use crate::repo::dialogue_storage::DialogueStorageKey;
 
-#[instrument(skip(bot, msg, dialogue))]
+#[instrument(skip(bot, chat_id, from, dialogue))]
 pub async fn trigger_delete(
     bot: Bot,
-    msg: Message,
-    optional_key: Option<DialogueStorageKey>,
+    chat_id: ChatId,
+    from: Option<User>,
     dialogue: Arc<dyn DialogueStore>,
 ) -> Result<(), ApiError> {
-    if !is_user(&msg) {
-        bot.send_message(msg.chat.id, "Каналы не поддерживаются")
+    let Some(user_id) = get_user_id_from_option(&from) else {
+        bot.send_message(chat_id, "Каналы не поддерживаются")
             .await?;
         return Ok(());
-    }
-
-    let key = match optional_key {
-        Some(k) => k,
-        None => {
-            (msg.from.unwrap().id, msg.chat.id)
-        }
     };
-    bot.send_message(msg.chat.id, "Введите название стикера для удаления")
+
+    let key = (user_id, chat_id);
+
+    bot.send_message(chat_id, "Введите название стикера для удаления")
         .await?;
     dialogue.update_dialogue(key, State::TriggerDeleteCmd);
 
@@ -67,7 +63,7 @@ pub async fn delete_sticker(
                 format!("Стикер {} успешно удален", sticker_name),
             )
             .await?;
-            dialogue.remove_dialogue(key);
+            dialogue.remove_dialogue(&key);
         }
 
         Err(ApiError::StickerNotFound) => {
@@ -89,7 +85,7 @@ pub async fn delete_sticker(
                 format!("Произошла ошибка удаления стикера: {}", e),
             )
             .await?;
-            dialogue.remove_dialogue(key);
+            dialogue.remove_dialogue(&key);
         }
     }
 
