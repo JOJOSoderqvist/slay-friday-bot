@@ -104,21 +104,6 @@ async fn main() {
     let command_handler = dptree::entry()
         .filter_command::<Command>()
         .endpoint(handle_command);
-    //
-    // // let state_handler = dptree::entry()
-    // //     .branch(case![State::ReceiveSticker { name }].endpoint(receive_sticker))
-    // //     .branch(case![State::ReceiveNewName { old_name }].endpoint(receive_new_sticker_name));
-    //
-    // let callback_handler = Update::filter_callback_query()
-    //     .endpoint(inline_choice_callback);
-    //
-    // let message_handler = Update::filter_message()
-    //     .branch(command_handler)
-    //     .endpoint(state_dispatcher);
-    //
-    // let handler = dptree::entry()
-    //     .branch(message_handler)
-    //     .branch(callback_handler);
 
     let dialogue_store = Arc::new(UserDialogueStorage::new()) as Arc<dyn DialogueStore>;
 

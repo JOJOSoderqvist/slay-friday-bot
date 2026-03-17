@@ -2,7 +2,7 @@ use crate::commands::Command;
 use crate::common::Model;
 use crate::errors::ApiError;
 use crate::handlers::add_sticker::trigger_add;
-use crate::handlers::delete_sticker::{trigger_delete};
+use crate::handlers::delete_sticker::trigger_delete;
 use crate::handlers::friday::friday;
 use crate::handlers::get_sticker::get_sticker;
 use crate::handlers::list_stickers::list_stickers;
@@ -18,6 +18,7 @@ use log::info;
 use std::sync::Arc;
 use teloxide::Bot;
 use teloxide::prelude::{Message, Requester};
+use teloxide::types::ChatId;
 use teloxide::utils::command::BotCommands;
 use tracing::instrument;
 
@@ -43,8 +44,8 @@ pub trait StickerStore: Send + Sync {
 }
 
 pub trait DialogueStore: Send + Sync {
-    fn get_dialogue(&self, key: DialogueStorageKey) -> Option<State>;
-    fn remove_dialogue(&self, key: DialogueStorageKey) -> Option<(DialogueStorageKey, State)>;
+    fn get_dialogue(&self, key: &DialogueStorageKey) -> Option<State>;
+    fn remove_dialogue(&self, key: &DialogueStorageKey) -> Option<(DialogueStorageKey, State)>;
     fn update_dialogue(&self, key: DialogueStorageKey, new_state: State) -> Option<State>;
 }
 
@@ -59,41 +60,41 @@ pub async fn handle_command(
     dialogue: Arc<dyn DialogueStore>,
 ) -> Result<(), ApiError> {
     match cmd {
-        Command::Help => help(bot, msg).await?,
+        Command::Help => help(bot, msg.chat.id).await?,
 
-        Command::Friday => friday(bot, msg, generator, message_store).await?,
+        Command::Friday => friday(bot, msg.chat.id, generator, message_store).await?,
 
         Command::Model => model_info(bot, msg, message_store).await?,
 
-        Command::ListStickers => list_stickers(bot, msg, sticker_store).await?,
+        Command::ListStickers => list_stickers(bot, msg.chat.id, sticker_store).await?,
 
-        Command::AddSticker => trigger_add(bot, msg, None, dialogue).await?,
+        Command::AddSticker => trigger_add(bot, msg.chat.id, msg.from, dialogue).await?,
 
         Command::Cancel => cancel(bot, msg, dialogue).await?,
 
         Command::Sticker(name) => get_sticker(bot, msg, name, sticker_store).await?,
 
-        Command::RenameSticker => trigger_rename(bot, msg, None, dialogue).await?,
+        Command::RenameSticker => trigger_rename(bot, msg.chat.id, msg.from, dialogue).await?,
 
-        Command::DeleteSticker => trigger_delete(bot, msg, None, dialogue).await?,
-        Command::Slay => slay(bot, msg, dialogue).await?,
+        Command::DeleteSticker => trigger_delete(bot, msg.chat.id, msg.from, dialogue).await?,
+        Command::Slay => slay(bot, msg.chat.id, msg.from).await?,
     }
 
     Ok(())
 }
 
-#[instrument(skip(bot, msg))]
-pub async fn help(bot: Bot, msg: Message) -> Result<(), ApiError> {
+#[instrument(skip(bot, chat_id))]
+pub async fn help(bot: Bot, chat_id: ChatId) -> Result<(), ApiError> {
     info!("Help command");
-    bot.send_message(msg.chat.id, Command::descriptions().to_string())
+    bot.send_message(chat_id, Command::descriptions().to_string())
         .await?;
     Ok(())
 }
 
 async fn cancel(bot: Bot, msg: Message, dialogue: Arc<dyn DialogueStore>) -> Result<(), ApiError> {
     let key = (msg.from.unwrap().id, msg.chat.id);
-    if dialogue.get_dialogue(key).is_some() {
-        dialogue.remove_dialogue(key);
+    if dialogue.get_dialogue(&key).is_some() {
+        dialogue.remove_dialogue(&key);
         bot.send_message(msg.chat.id, "Операция отменена.").await?;
     }
     Ok(())

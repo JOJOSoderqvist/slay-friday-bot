@@ -7,10 +7,10 @@ use teloxide::prelude::*;
 use teloxide::types::ParseMode;
 use tracing::instrument;
 
-#[instrument(skip(bot, msg, sticker_store))]
+#[instrument(skip(bot, chat_id, sticker_store))]
 pub async fn list_stickers(
     bot: Bot,
-    msg: Message,
+    chat_id: ChatId,
     sticker_store: Arc<dyn StickerStore>,
 ) -> Result<(), ApiError> {
     match sticker_store.list_stickers().await {
@@ -23,17 +23,13 @@ pub async fn list_stickers(
                 *name = format!("`{name}`");
             });
 
-            bot.send_message(
-                msg.chat.id,
-                format!("Доступные стикеры:\n{}", names.join("\n")),
-            )
-            .parse_mode(ParseMode::MarkdownV2)
-            .await?;
+            bot.send_message(chat_id, format!("Доступные стикеры:\n{}", names.join("\n")))
+                .parse_mode(ParseMode::MarkdownV2)
+                .await?;
         }
         None => {
             debug!("No stickers in storage");
-            bot.send_message(msg.chat.id, "Список стикеров пуст")
-                .await?;
+            bot.send_message(chat_id, "Список стикеров пуст").await?;
         }
     }
 

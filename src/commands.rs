@@ -70,7 +70,8 @@ impl FromStr for Command {
             "/slay" => Ok(Command::Slay),
             "/friday" => Ok(Command::Friday),
             "/model" => Ok(Command::Model),
-            "/get" => Ok(Command::Sticker(String::default())), // TODO: Additional alloc?
+            "/get" => Ok(Command::Sticker(String::default())),
+            "/delete" => Ok(Command::DeleteSticker),
             "/add" => Ok(Command::AddSticker),
             "/list" => Ok(Command::ListStickers),
             "/rename" => Ok(Command::RenameSticker),
