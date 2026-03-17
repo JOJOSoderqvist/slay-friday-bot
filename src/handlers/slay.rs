@@ -61,6 +61,7 @@ pub async fn inline_choice_callback(
     };
 
     let key = (q.from.id, chat_id);
+    dialogue.remove_dialogue(&key);
 
     let Some(data) = q.data else {
         warn!("callback had no data");
@@ -69,29 +70,22 @@ pub async fn inline_choice_callback(
 
     match data.parse::<Command>()? {
         Command::Help => {
-            info!("help cmd parsed");
             help(bot, chat_id).await?;
-            dialogue.remove_dialogue(&key);
             Ok(())
         }
         Command::Friday => {
-            dialogue.remove_dialogue(&key);
             friday(bot, chat_id, generator, message_store).await?;
             Ok(())
         }
         Command::ListStickers => {
-            dialogue.remove_dialogue(&key);
             list_stickers(bot, chat_id, sticker_store).await?;
             Ok(())
         }
         Command::Sticker(_) => {
-            dialogue.remove_dialogue(&key);
-
             let stickers_list = sticker_store.list_stickers().await;
             let mut available_stickers = match stickers_list {
                 None => {
                     bot.send_message(chat_id, "No stickers available").await?;
-                    dialogue.remove_dialogue(&key);
                     return Ok(());
                 }
                 Some(stickers) => stickers,
@@ -113,33 +107,22 @@ pub async fn inline_choice_callback(
         }
 
         Command::AddSticker => {
-            if let Some(d) = dialogue.get_dialogue(&key) {
-                info!("updated state: {d}, u_id: {}, c_id: {}", key.0, key.1)
-            } else {
-                info!("no state")
-            }
-
-            dialogue.remove_dialogue(&key);
-            info!("trigger add");
             trigger_add(bot, chat_id, Some(q.from), dialogue).await?;
             Ok(())
         }
 
         Command::RenameSticker => {
-            dialogue.remove_dialogue(&key);
             trigger_rename(bot, chat_id, Some(q.from), dialogue).await?;
             Ok(())
         }
 
         Command::DeleteSticker => {
-            dialogue.remove_dialogue(&key);
             trigger_delete(bot, chat_id, Some(q.from), dialogue).await?;
             Ok(())
         }
         cmd => {
             bot.send_message(chat_id, format!("Команда {cmd} пока не поддерживается"))
                 .await?;
-            dialogue.remove_dialogue(&key);
             Ok(())
         }
     }
