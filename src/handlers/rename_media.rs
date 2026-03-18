@@ -1,6 +1,6 @@
 use crate::errors::ApiError;
-use crate::errors::ApiError::StickerAlreadyExists;
-use crate::handlers::root_handler::{DialogueStore, StickerStore};
+use crate::errors::ApiError::MediaAlreadyExists;
+use crate::handlers::root_handler::{DialogueStore, MediaStore};
 use crate::handlers::utils::{get_current_state, get_key, get_user_id_from_option};
 use crate::states::State;
 use std::sync::Arc;
@@ -26,19 +26,19 @@ pub async fn trigger_rename(
 
     bot.send_message(
         chat_id,
-        "Введите название стикера, который хотите переименовать",
+        "Введите название медиафайла, который хотите переименовать",
     )
     .await?;
     dialogue.update_dialogue(key, State::TriggeredRenameCmd);
     Ok(())
 }
 
-#[instrument(skip(bot, msg, dialogue, sticker_store))]
-pub async fn rename_sticker(
+#[instrument(skip(bot, msg, dialogue, media_store))]
+pub async fn rename_media(
     bot: Bot,
     msg: Message,
     dialogue: Arc<dyn DialogueStore>,
-    sticker_store: Arc<dyn StickerStore>,
+    media_store: Arc<dyn MediaStore>,
 ) -> Result<(), ApiError> {
     let Some(key) = get_key(&msg) else {
         bot.send_message(msg.chat.id, "Каналы не поддерживаются")
@@ -50,7 +50,7 @@ pub async fn rename_sticker(
         return Ok(());
     };
 
-    let Some(sticker_name) = msg.text() else {
+    let Some(media_entry_name) = msg.text() else {
         bot.send_message(
             msg.chat.id,
             "Сообщение пустое, либо это не текстовое сообщение",
@@ -59,12 +59,12 @@ pub async fn rename_sticker(
         return Ok(());
     };
 
-    if !sticker_store.is_already_created(sticker_name).await {
+    if !media_store.is_already_created(media_entry_name).await {
         bot.send_message(
             msg.chat.id,
             format!(
-                "Стикер с именем {} не существует, попробуй другое",
-                sticker_name
+                "Медиафайл с именем {} не существует, попробуй другое",
+                media_entry_name
             ),
         )
         .await?;
@@ -74,7 +74,7 @@ pub async fn rename_sticker(
     dialogue.update_dialogue(
         key,
         State::PerformRename {
-            old_name: sticker_name.to_string(),
+            old_name: media_entry_name.to_string(),
         },
     );
     bot.send_message(msg.chat.id, "Введите новое название")
@@ -83,11 +83,11 @@ pub async fn rename_sticker(
     Ok(())
 }
 
-pub async fn process_new_sticker_name(
+pub async fn process_new_media_name(
     bot: Bot,
     msg: Message,
     dialogue: Arc<dyn DialogueStore>,
-    sticker_store: Arc<dyn StickerStore>,
+    media_store: Arc<dyn MediaStore>,
 ) -> Result<(), ApiError> {
     let Some(key) = get_key(&msg) else {
         bot.send_message(msg.chat.id, "Каналы не поддерживаются")
@@ -105,8 +105,8 @@ pub async fn process_new_sticker_name(
         return Ok(());
     };
 
-    match sticker_store
-        .rename_sticker(old_name.as_str(), new_name)
+    match media_store
+        .rename_media_entry(old_name.as_str(), new_name)
         .await
     {
         Ok(_) => {
@@ -119,11 +119,11 @@ pub async fn process_new_sticker_name(
             dialogue.remove_dialogue(&key);
         }
 
-        Err(StickerAlreadyExists) => {
+        Err(MediaAlreadyExists) => {
             bot.send_message(
                 msg.chat.id,
                 format!(
-                    "Стикер с именем {} уже существует, попробуй другое",
+                    "Медиафайл с именем {} уже существует, попробуй другое",
                     new_name
                 ),
             )

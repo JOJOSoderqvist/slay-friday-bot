@@ -1,8 +1,8 @@
 use crate::errors::ApiError;
-use crate::handlers::add_sticker::{process_new_name, receive_sticker};
-use crate::handlers::delete_sticker::delete_sticker;
-use crate::handlers::rename_sticker::{process_new_sticker_name, rename_sticker};
-use crate::handlers::root_handler::{DialogueStore, StickerStore};
+use crate::handlers::add_media::{process_new_name, receive_media};
+use crate::handlers::delete_media::delete_media;
+use crate::handlers::rename_media::{process_new_media_name, rename_media};
+use crate::handlers::root_handler::{DialogueStore, MediaStore};
 use crate::states::State;
 use std::sync::Arc;
 use teloxide::Bot;
@@ -12,7 +12,7 @@ pub async fn state_dispatcher(
     bot: Bot,
     msg: Message,
     dialogue: Arc<dyn DialogueStore>,
-    sticker_store: Arc<dyn StickerStore>,
+    media_store: Arc<dyn MediaStore>,
 ) -> Result<(), ApiError> {
     let chat_id = msg.chat.id;
     let Some(user) = msg.from.clone() else {
@@ -23,27 +23,27 @@ pub async fn state_dispatcher(
 
     match dialogue.get_dialogue(&key) {
         Some(State::TriggeredAddCmd) => {
-            process_new_name(bot, msg, dialogue, sticker_store).await?;
+            process_new_name(bot, msg, dialogue, media_store).await?;
             Ok(())
         }
 
         Some(State::PerformAdd { .. }) => {
-            receive_sticker(bot, msg, dialogue, sticker_store).await?;
+            receive_media(bot, msg, dialogue, media_store).await?;
             Ok(())
         }
 
         Some(State::TriggeredRenameCmd) => {
-            rename_sticker(bot, msg, dialogue, sticker_store).await?;
+            rename_media(bot, msg, dialogue, media_store).await?;
             Ok(())
         }
 
         Some(State::PerformRename { .. }) => {
-            process_new_sticker_name(bot, msg, dialogue, sticker_store).await?;
+            process_new_media_name(bot, msg, dialogue, media_store).await?;
             Ok(())
         }
 
         Some(State::TriggerDeleteCmd) => {
-            delete_sticker(bot, msg, dialogue, sticker_store).await?;
+            delete_media(bot, msg, dialogue, media_store).await?;
             Ok(())
         }
 

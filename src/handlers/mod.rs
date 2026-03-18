@@ -1,10 +1,10 @@
-pub mod add_sticker;
-mod delete_sticker;
+pub mod add_media;
+mod delete_media;
 mod friday;
-mod get_sticker;
-mod list_stickers;
+mod get_media;
+mod list_available_media;
 mod model_info;
-pub mod rename_sticker;
+pub mod rename_media;
 pub mod root_handler;
 pub mod slay;
 pub mod state_dispatcher;

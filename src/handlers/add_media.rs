@@ -1,8 +1,10 @@
 use crate::errors::ApiError;
-use crate::errors::ApiError::StickerAlreadyExists;
-use crate::handlers::root_handler::{DialogueStore, StickerStore};
-use crate::handlers::utils::{get_current_state, get_key, get_user_id_from_option};
-use crate::repo::sticker_storage::dto::StickerEntry;
+use crate::errors::ApiError::MediaAlreadyExists;
+use crate::handlers::root_handler::{DialogueStore, MediaStore};
+use crate::handlers::utils::{
+    extract_media_file_id, get_current_state, get_key, get_user_id_from_option,
+};
+use crate::repo::media_storage::dto::MediaEntry;
 use crate::states::State;
 use std::sync::Arc;
 use teloxide::Bot;
@@ -25,19 +27,19 @@ pub async fn trigger_add(
 
     let key = (user_id, chat_id);
 
-    bot.send_message(chat_id, "Введите название стикера")
+    bot.send_message(chat_id, "Введите название медиафайла")
         .await?;
     dialogue.update_dialogue(key, State::TriggeredAddCmd);
 
     Ok(())
 }
 
-#[instrument(skip(bot, msg, dialogue, sticker_store))]
+#[instrument(skip(bot, msg, dialogue, media_store))]
 pub async fn process_new_name(
     bot: Bot,
     msg: Message,
     dialogue: Arc<dyn DialogueStore>,
-    sticker_store: Arc<dyn StickerStore>,
+    media_store: Arc<dyn MediaStore>,
 ) -> Result<(), ApiError> {
     let Some(key) = get_key(&msg) else {
         bot.send_message(msg.chat.id, "Каналы не поддерживаются")
@@ -49,7 +51,7 @@ pub async fn process_new_name(
         return Ok(());
     };
 
-    let Some(sticker_name) = msg.text() else {
+    let Some(media_name) = msg.text() else {
         bot.send_message(
             msg.chat.id,
             "Сообщение пустое, либо это не текстовое сообщение",
@@ -58,12 +60,12 @@ pub async fn process_new_name(
         return Ok(());
     };
 
-    if sticker_store.is_already_created(sticker_name).await {
+    if media_store.is_already_created(media_name).await {
         bot.send_message(
             msg.chat.id,
             format!(
-                "Стикер с именем {} уже существует, попробуй другое",
-                sticker_name
+                "Медиафайл с именем {} уже существует, попробуй другое",
+                media_name
             ),
         )
         .await?;
@@ -73,21 +75,21 @@ pub async fn process_new_name(
     dialogue.update_dialogue(
         key,
         State::PerformAdd {
-            sticker_name: sticker_name.to_string(),
+            media_entry_name: media_name.to_string(),
         },
     );
 
-    bot.send_message(msg.chat.id, "Отправьте стикер").await?;
+    bot.send_message(msg.chat.id, "Отправьте стикер или gif").await?;
 
     Ok(())
 }
 
-#[instrument(skip(bot, msg, dialogue, sticker_store))]
-pub async fn receive_sticker(
+#[instrument(skip(bot, msg, dialogue, media_store))]
+pub async fn receive_media(
     bot: Bot,
     msg: Message,
     dialogue: Arc<dyn DialogueStore>,
-    sticker_store: Arc<dyn StickerStore>,
+    media_store: Arc<dyn MediaStore>,
 ) -> Result<(), ApiError> {
     let Some(key) = get_key(&msg) else {
         bot.send_message(msg.chat.id, "Каналы не поддерживаются")
@@ -95,29 +97,30 @@ pub async fn receive_sticker(
         return Ok(());
     };
 
-    let Some(State::PerformAdd { sticker_name }) = get_current_state(&msg, dialogue.clone()) else {
+    let Some(State::PerformAdd { media_entry_name }) = get_current_state(&msg, dialogue.clone())
+    else {
         return Ok(());
     };
 
-    if let Some(sticker) = msg.sticker() {
-        let entry = StickerEntry::new(sticker_name.clone(), sticker.file.id.clone().to_string());
+    if let Some(media) = msg.sticker() {
+        let entry = MediaEntry::new(media_entry_name.clone(), media.file.id.clone().to_string());
 
-        match sticker_store.add_sticker(entry).await {
+        match media_store.add_media_entry(entry).await {
             Ok(_) => {
                 bot.send_message(
                     msg.chat.id,
-                    format!("Стикер '{}' сохранен! 🎉", sticker_name),
+                    format!("Медиа '{}' сохранено! 🎉", media_entry_name),
                 )
                 .await?;
 
                 dialogue.remove_dialogue(&key);
             }
-            Err(StickerAlreadyExists) => {
+            Err(MediaAlreadyExists) => {
                 bot.send_message(
                     msg.chat.id,
                     format!(
-                        "Стикер '{}' уже существует. Попробуйте другое имя",
-                        sticker_name
+                        "Медиа '{}' уже существует. Попробуйте другое имя",
+                        media_entry_name
                     ),
                 )
                 .await?;
@@ -128,7 +131,7 @@ pub async fn receive_sticker(
 
                 bot.send_message(
                     msg.chat.id,
-                    format!("Произошла ошибка сохранения стикера: {}", e),
+                    format!("Произошла ошибка сохранения медиафайла: {}", e),
                 )
                 .await?;
 
@@ -136,7 +139,7 @@ pub async fn receive_sticker(
             }
         }
     } else {
-        bot.send_message(msg.chat.id, "Это не стикер. Отправьте стикер или /cancel.")
+        bot.send_message(msg.chat.id, "Это не стикер и не gif. Отправьте стикер, gif или команду /cancel.")
             .await?;
     }
     Ok(())
