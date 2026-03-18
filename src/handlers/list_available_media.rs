@@ -23,9 +23,12 @@ pub async fn list_media(
                 *name = format!("`{name}`");
             });
 
-            bot.send_message(chat_id, format!("Доступные медиафайлы:\n{}", names.join("\n")))
-                .parse_mode(ParseMode::MarkdownV2)
-                .await?;
+            bot.send_message(
+                chat_id,
+                format!("Доступные медиафайлы:\n{}", names.join("\n")),
+            )
+            .parse_mode(ParseMode::MarkdownV2)
+            .await?;
         }
         None => {
             debug!("No media in storage");

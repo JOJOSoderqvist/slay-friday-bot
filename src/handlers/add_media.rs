@@ -79,7 +79,8 @@ pub async fn process_new_name(
         },
     );
 
-    bot.send_message(msg.chat.id, "Отправьте стикер или gif").await?;
+    bot.send_message(msg.chat.id, "Отправьте стикер или gif")
+        .await?;
 
     Ok(())
 }
@@ -101,27 +102,30 @@ pub async fn receive_media(
     else {
         return Ok(());
     };
-    
-    
+
     let Some(file_id) = extract_media_file_id(&msg) else {
-        bot.send_message(msg.chat.id, "Это не стикер и не gif. Отправьте стикер, gif или команду /cancel.").await?;
+        bot.send_message(
+            msg.chat.id,
+            "Это не стикер и не gif. Отправьте стикер, gif или команду /cancel.",
+        )
+        .await?;
         return Ok(());
     };
-    
-    
+
     let media_entry = MediaEntry::new(media_entry_name, file_id.to_string());
     match media_store.add_media_entry(media_entry).await {
         Ok(_) => {
-            bot.send_message(msg.chat.id, "Медиафайл сохранен! 🎉").await?;
+            bot.send_message(msg.chat.id, "Медиафайл сохранен! 🎉")
+                .await?;
             dialogue.remove_dialogue(&key);
-        },
+        }
         Err(MediaAlreadyExists) => {
             bot.send_message(
                 msg.chat.id,
                 "Медиафайл с этим именем уже существует. Попробуйте другое имя",
             )
             .await?;
-        },
+        }
         Err(e) => {
             error!(err = %e, "Failed to handle media creation");
 
