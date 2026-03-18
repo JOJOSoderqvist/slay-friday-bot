@@ -101,46 +101,39 @@ pub async fn receive_media(
     else {
         return Ok(());
     };
-
-    if let Some(media) = msg.sticker() {
-        let entry = MediaEntry::new(media_entry_name.clone(), media.file.id.clone().to_string());
-
-        match media_store.add_media_entry(entry).await {
-            Ok(_) => {
-                bot.send_message(
-                    msg.chat.id,
-                    format!("Медиа '{}' сохранено! 🎉", media_entry_name),
-                )
-                .await?;
-
-                dialogue.remove_dialogue(&key);
-            }
-            Err(MediaAlreadyExists) => {
-                bot.send_message(
-                    msg.chat.id,
-                    format!(
-                        "Медиа '{}' уже существует. Попробуйте другое имя",
-                        media_entry_name
-                    ),
-                )
-                .await?;
-            }
-
-            Err(e) => {
-                error!(err = %e, "Failed to handle sticker creation");
-
-                bot.send_message(
-                    msg.chat.id,
-                    format!("Произошла ошибка сохранения медиафайла: {}", e),
-                )
-                .await?;
-
-                dialogue.remove_dialogue(&key);
-            }
-        }
-    } else {
-        bot.send_message(msg.chat.id, "Это не стикер и не gif. Отправьте стикер, gif или команду /cancel.")
+    
+    
+    let Some(file_id) = extract_media_file_id(&msg) else {
+        bot.send_message(msg.chat.id, "Это не стикер и не gif. Отправьте стикер, gif или команду /cancel.").await?;
+        return Ok(());
+    };
+    
+    
+    let media_entry = MediaEntry::new(media_entry_name, file_id.to_string());
+    match media_store.add_media_entry(media_entry).await {
+        Ok(_) => {
+            bot.send_message(msg.chat.id, "Медиафайл сохранен! 🎉").await?;
+            dialogue.remove_dialogue(&key);
+        },
+        Err(MediaAlreadyExists) => {
+            bot.send_message(
+                msg.chat.id,
+                "Медиафайл с этим именем уже существует. Попробуйте другое имя",
+            )
             .await?;
+        },
+        Err(e) => {
+            error!(err = %e, "Failed to handle media creation");
+
+            bot.send_message(
+                msg.chat.id,
+                format!("Произошла ошибка сохранения медиафайла: {}", e),
+            )
+            .await?;
+
+            dialogue.remove_dialogue(&key);
+        }
     }
+
     Ok(())
 }
