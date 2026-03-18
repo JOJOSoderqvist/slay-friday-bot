@@ -22,23 +22,23 @@ pub enum Command {
     Friday,
     #[command(description = "Показать, какая модель сгенерировала сообщние (из последних 20)")]
     Model,
-    #[command(description = "Отправить стикер с определенным названием.\nНапример, /sticker xdd или /get xdd",
+    #[command(description = "Отправить стикер или gif с определенным названием.\nНапример, /get xdd",
     aliases = ["get"])]
-    Sticker(String),
-    #[command(rename = "list_stickers", description = "Показать доступные стикеры", aliases = ["list"])]
-    ListStickers,
+    GetMedia(String),
+    #[command(rename = "list_media", description = "Показать доступные стикеры или gif", aliases = ["list"])]
+    ListMedia,
 
-    #[command(rename="add_sticker", description = "Добавляет новый стикер.",
+    #[command(rename="add_media", description = "Добавляет новый стикер или gif.",
     aliases = ["add"])]
-    AddSticker,
+    AddMedia,
 
-    #[command(rename="rename_sticker", description = "Переименовывает существующий стикер.",
+    #[command(rename="rename_media", description = "Переименовывает существующий стикер или gif.",
     aliases = ["rename"])]
-    RenameSticker,
+    RenameMedia,
 
-    #[command(rename="delete_sticker", description = "Удаляет существующий стикер.",
-    aliases = ["delete", "remove_sticker", "remove"])]
-    DeleteSticker,
+    #[command(rename="delete_media", description = "Удаляет существующий стикер или gif.",
+    aliases = ["delete", "remove"])]
+    DeleteMedia,
 
     #[command(description = "Отмена операции в рамках диалога")]
     Cancel,
@@ -51,11 +51,11 @@ impl Display for Command {
             Command::Slay => "/slay",
             Command::Friday => "/friday",
             Command::Model => "/model",
-            Command::Sticker(_) => "/get",
-            Command::ListStickers => "/list",
-            Command::AddSticker => "/add",
-            Command::RenameSticker => "/rename",
-            Command::DeleteSticker => "/delete",
+            Command::GetMedia(_) => "/get",
+            Command::ListMedia => "/list",
+            Command::AddMedia => "/add",
+            Command::RenameMedia => "/rename",
+            Command::DeleteMedia => "/delete",
             Command::Cancel => "/cancel",
         })
     }
@@ -70,11 +70,11 @@ impl FromStr for Command {
             "/slay" => Ok(Command::Slay),
             "/friday" => Ok(Command::Friday),
             "/model" => Ok(Command::Model),
-            "/get" => Ok(Command::Sticker(String::default())),
-            "/delete" => Ok(Command::DeleteSticker),
-            "/add" => Ok(Command::AddSticker),
-            "/list" => Ok(Command::ListStickers),
-            "/rename" => Ok(Command::RenameSticker),
+            "/get" => Ok(Command::GetMedia(String::default())),
+            "/delete" => Ok(Command::DeleteMedia),
+            "/add" => Ok(Command::AddMedia),
+            "/list" => Ok(Command::ListMedia),
+            "/rename" => Ok(Command::RenameMedia),
             "/cancel" => Ok(Command::Cancel),
             cmd => Err(CommandConversionError(format!("Unknown command: {}", cmd))),
         }

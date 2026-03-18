@@ -2,7 +2,7 @@ use crate::handlers::root_handler::DialogueStore;
 use crate::repo::dialogue_storage::DialogueStorageKey;
 use crate::states::State;
 use std::sync::Arc;
-use teloxide::types::{Message, User, UserId};
+use teloxide::types::{FileId, Message, User, UserId};
 
 pub fn get_user_id_from_option(from: &Option<User>) -> Option<UserId> {
     from.as_ref().map(|u| u.id)
@@ -17,4 +17,14 @@ pub fn get_key(msg: &Message) -> Option<DialogueStorageKey> {
 pub fn get_current_state(msg: &Message, dialogue: Arc<dyn DialogueStore>) -> Option<State> {
     let key = get_key(msg)?;
     dialogue.get_dialogue(&key)
+}
+
+pub fn extract_media_file_id(msg: &Message) -> Option<&FileId> {
+    match msg.animation() {
+        Some(a) => Some(&a.file.id),
+        None => match msg.sticker() {
+            Some(s) => Some(&s.file.id),
+            None => None,
+        },
+    }
 }

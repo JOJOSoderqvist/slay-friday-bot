@@ -18,14 +18,14 @@ use crate::generation_controller::{ContentRephraser, GenerationController, Model
 use crate::gigachat_api::api::GigaChatApi;
 use crate::grok_api::api::GrokApi;
 use crate::handlers::root_handler::{
-    ContentGenerator, DialogueStore, MessageStore, StickerStore, handle_command,
+    ContentGenerator, DialogueStore, MediaStore, MessageStore, handle_command,
 };
 use crate::handlers::slay::inline_choice_callback;
 use crate::handlers::state_dispatcher::state_dispatcher;
 use crate::mistral_api::api::MistralApi;
 use crate::repo::dialogue_storage::UserDialogueStorage;
+use crate::repo::media_storage::storage::MediaStorage;
 use crate::repo::message_history_storage::MessageHistoryStorage;
-use crate::repo::sticker_storage::storage::StickerStorage;
 use std::process;
 use std::sync::Arc;
 use teloxide::dispatching::UpdateFilterExt;
@@ -66,8 +66,8 @@ async fn main() {
         }
     };
 
-    let sticker_storage = match StickerStorage::new("sticker_storage.json".to_string()).await {
-        Ok(storage) => Arc::new(storage) as Arc<dyn StickerStore>,
+    let media_storage = match MediaStorage::new("sticker_storage.json".to_string()).await {
+        Ok(storage) => Arc::new(storage) as Arc<dyn MediaStore>,
         Err(e) => {
             eprintln!("error happened configuring sticker storage: {}", e);
             process::exit(1);
@@ -120,7 +120,7 @@ async fn main() {
     Dispatcher::builder(bot, handler)
         .dependencies(dptree::deps![
             generation_controller,
-            sticker_storage,
+            media_storage,
             message_history_storage,
             dialogue_store
         ])

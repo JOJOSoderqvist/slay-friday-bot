@@ -3,7 +3,7 @@ use strum::Display;
 #[derive(Clone, Display)]
 pub enum State {
     TriggeredAddCmd,
-    PerformAdd { sticker_name: String },
+    PerformAdd { media_entry_name: String },
     TriggeredRenameCmd,
     PerformRename { old_name: String },
 

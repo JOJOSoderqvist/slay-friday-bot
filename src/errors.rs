@@ -49,11 +49,11 @@ pub enum ApiError {
     #[error("Repo error {0}")]
     StorageError(#[from] RepoError),
 
-    #[error("Sticker already exists")]
-    StickerAlreadyExists,
+    #[error("Media already exists")]
+    MediaAlreadyExists,
 
-    #[error("Sticker not found")]
-    StickerNotFound,
+    #[error("Media not found")]
+    MediaNotFound,
 
     #[error("Telegram API error: {0}")]
     TelegramError(#[from] RequestError),

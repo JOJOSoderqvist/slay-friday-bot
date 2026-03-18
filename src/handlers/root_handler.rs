@@ -1,20 +1,19 @@
 use crate::commands::Command;
 use crate::common::Model;
 use crate::errors::ApiError;
-use crate::handlers::add_sticker::trigger_add;
-use crate::handlers::delete_sticker::trigger_delete;
+use crate::handlers::add_media::trigger_add;
+use crate::handlers::delete_media::trigger_delete;
 use crate::handlers::friday::friday;
-use crate::handlers::get_sticker::get_sticker;
-use crate::handlers::list_stickers::list_stickers;
+use crate::handlers::get_media::get_media;
+use crate::handlers::list_available_media::list_media;
 use crate::handlers::model_info::model_info;
-use crate::handlers::rename_sticker::trigger_rename;
+use crate::handlers::rename_media::trigger_rename;
 use crate::handlers::slay::slay;
 use crate::repo::dialogue_storage::DialogueStorageKey;
+use crate::repo::media_storage::dto::MediaEntry;
 use crate::repo::message_history_storage::HistoryEntry;
-use crate::repo::sticker_storage::dto::StickerEntry;
 use crate::states::State;
 use async_trait::async_trait;
-use log::info;
 use std::sync::Arc;
 use teloxide::Bot;
 use teloxide::prelude::{Message, Requester};
@@ -34,13 +33,17 @@ pub trait MessageStore: Send + Sync {
 }
 
 #[async_trait]
-pub trait StickerStore: Send + Sync {
-    async fn add_sticker(&self, sticker: StickerEntry) -> Result<(), ApiError>;
-    async fn get_sticker(&self, sticker_name: &str) -> Option<StickerEntry>;
-    async fn rename_sticker(&self, old_name: &str, new_name: &str) -> Result<(), ApiError>;
-    async fn list_stickers(&self) -> Option<Vec<StickerEntry>>;
-    async fn remove_sticker(&self, sticker_name: &str) -> Result<(), ApiError>;
-    async fn is_already_created(&self, sticker_name: &str) -> bool;
+pub trait MediaStore: Send + Sync {
+    async fn add_media_entry(&self, media_entry: MediaEntry) -> Result<(), ApiError>;
+    async fn get_media_entry(&self, media_entry_name: &str) -> Option<MediaEntry>;
+    async fn rename_media_entry(
+        &self,
+        old_entry_name: &str,
+        new_entry_name: &str,
+    ) -> Result<(), ApiError>;
+    async fn list_available_media_entries(&self) -> Option<Vec<MediaEntry>>;
+    async fn remove_media_entry(&self, media_entry_name: &str) -> Result<(), ApiError>;
+    async fn is_already_created(&self, media_entry_name: &str) -> bool;
 }
 
 pub trait DialogueStore: Send + Sync {
@@ -49,13 +52,13 @@ pub trait DialogueStore: Send + Sync {
     fn update_dialogue(&self, key: DialogueStorageKey, new_state: State) -> Option<State>;
 }
 
-#[instrument(skip(bot, generator, cmd, msg, sticker_store, message_store, dialogue))]
+#[instrument(skip(bot, generator, cmd, msg, media_store, message_store, dialogue))]
 pub async fn handle_command(
     bot: Bot,
     msg: Message,
     cmd: Command,
     generator: Arc<dyn ContentGenerator>,
-    sticker_store: Arc<dyn StickerStore>,
+    media_store: Arc<dyn MediaStore>,
     message_store: Arc<dyn MessageStore>,
     dialogue: Arc<dyn DialogueStore>,
 ) -> Result<(), ApiError> {
@@ -66,17 +69,17 @@ pub async fn handle_command(
 
         Command::Model => model_info(bot, msg, message_store).await?,
 
-        Command::ListStickers => list_stickers(bot, msg.chat.id, sticker_store).await?,
+        Command::ListMedia => list_media(bot, msg.chat.id, media_store).await?,
 
-        Command::AddSticker => trigger_add(bot, msg.chat.id, msg.from, dialogue).await?,
+        Command::AddMedia => trigger_add(bot, msg.chat.id, msg.from, dialogue).await?,
 
         Command::Cancel => cancel(bot, msg, dialogue).await?,
 
-        Command::Sticker(name) => get_sticker(bot, msg, name, sticker_store).await?,
+        Command::GetMedia(name) => get_media(bot, msg, name, media_store).await?,
 
-        Command::RenameSticker => trigger_rename(bot, msg.chat.id, msg.from, dialogue).await?,
+        Command::RenameMedia => trigger_rename(bot, msg.chat.id, msg.from, dialogue).await?,
 
-        Command::DeleteSticker => trigger_delete(bot, msg.chat.id, msg.from, dialogue).await?,
+        Command::DeleteMedia => trigger_delete(bot, msg.chat.id, msg.from, dialogue).await?,
         Command::Slay => slay(bot, msg.chat.id, msg.from).await?,
     }
 
@@ -85,7 +88,6 @@ pub async fn handle_command(
 
 #[instrument(skip(bot, chat_id))]
 pub async fn help(bot: Bot, chat_id: ChatId) -> Result<(), ApiError> {
-    info!("Help command");
     bot.send_message(chat_id, Command::descriptions().to_string())
         .await?;
     Ok(())

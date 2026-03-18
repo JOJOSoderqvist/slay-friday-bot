@@ -1,5 +1,5 @@
 use crate::errors::ApiError;
-use crate::handlers::root_handler::{DialogueStore, StickerStore};
+use crate::handlers::root_handler::{DialogueStore, MediaStore};
 use crate::handlers::utils::{get_current_state, get_key, get_user_id_from_option};
 use crate::states::State;
 use std::sync::Arc;
@@ -23,19 +23,19 @@ pub async fn trigger_delete(
 
     let key = (user_id, chat_id);
 
-    bot.send_message(chat_id, "Введите название стикера для удаления")
+    bot.send_message(chat_id, "Введите название медиафайла для удаления")
         .await?;
     dialogue.update_dialogue(key, State::TriggerDeleteCmd);
 
     Ok(())
 }
 
-#[instrument(skip(bot, msg, dialogue, sticker_store))]
-pub async fn delete_sticker(
+#[instrument(skip(bot, msg, dialogue, media_store))]
+pub async fn delete_media(
     bot: Bot,
     msg: Message,
     dialogue: Arc<dyn DialogueStore>,
-    sticker_store: Arc<dyn StickerStore>,
+    media_store: Arc<dyn MediaStore>,
 ) -> Result<(), ApiError> {
     let Some(key) = get_key(&msg) else {
         bot.send_message(msg.chat.id, "Каналы не поддерживаются")
@@ -47,7 +47,7 @@ pub async fn delete_sticker(
         return Ok(());
     };
 
-    let Some(sticker_name) = msg.text() else {
+    let Some(media_entry_name) = msg.text() else {
         bot.send_message(
             msg.chat.id,
             "Сообщение пустое, либо это не текстовое сообщение",
@@ -56,33 +56,33 @@ pub async fn delete_sticker(
         return Ok(());
     };
 
-    match sticker_store.remove_sticker(sticker_name).await {
+    match media_store.remove_media_entry(media_entry_name).await {
         Ok(_) => {
             bot.send_message(
                 msg.chat.id,
-                format!("Стикер {} успешно удален", sticker_name),
+                format!("Медиа {} успешно удалено", media_entry_name),
             )
             .await?;
             dialogue.remove_dialogue(&key);
         }
 
-        Err(ApiError::StickerNotFound) => {
+        Err(ApiError::MediaNotFound) => {
             bot.send_message(
                 msg.chat.id,
                 format!(
-                    "Стикер с названием {} не найден, попробуйте другое название",
-                    sticker_name
+                    "Медиа с названием {} не найдено, попробуйте другое название",
+                    media_entry_name
                 ),
             )
             .await?;
         }
 
         Err(e) => {
-            error!(err = %e, "Failed to handle sticker deletion");
+            error!(err = %e, "Failed to handle media deletion");
 
             bot.send_message(
                 msg.chat.id,
-                format!("Произошла ошибка удаления стикера: {}", e),
+                format!("Произошла ошибка удаления медиафайла: {}", e),
             )
             .await?;
             dialogue.remove_dialogue(&key);
