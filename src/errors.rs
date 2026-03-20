@@ -10,7 +10,7 @@ pub enum ApiError {
     RequestError(#[source] reqwest::Error),
 
     #[error("Failed to parse proxy URL error: {0}")]
-    ProxyURLError(#[source] reqwest::Error),
+    ProxyURLBuildError(#[source] reqwest::Error),
 
     #[error("Failed to parse URL: {0}")]
     ParseUrlError(#[from] url::ParseError),
