@@ -1,9 +1,12 @@
 use chrono::{Datelike, Duration, Utc, Weekday};
 use chrono_tz::Europe::Moscow;
+use reqwest::{Client, Proxy};
 use std::fmt::Display;
 use teloxide::types::{
     InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, KeyboardMarkup, ReplyMarkup,
 };
+
+use crate::errors::ApiError::{self, ApiClientBuildError, ProxyURLBuildError};
 
 const DEFAULT_REPLY_KEYBOARD_CHUNK_SIZE: usize = 3;
 const DEFAULT_INLINE_KEYBOARD_CHUNK_SIZE: usize = 4;
@@ -71,4 +74,13 @@ pub fn reply_suggestions_keyboard<T: ToString>(data: &[T], cmd_prefix: &str) -> 
     keyboard.resize_keyboard = true;
 
     ReplyMarkup::Keyboard(keyboard)
+}
+
+pub fn get_client_with_proxy(proxy_url: &str) -> Result<Client, ApiError> {
+    let proxy = Proxy::all(proxy_url).map_err(ProxyURLBuildError)?;
+
+    Client::builder()
+        .proxy(proxy)
+        .build()
+        .map_err(ApiClientBuildError)
 }

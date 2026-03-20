@@ -1,14 +1,12 @@
 use crate::common::{Model, ensure_success};
 use crate::constants::TEXT_MODIFY_PROMPT;
 use crate::errors::ApiError;
-use crate::errors::ApiError::{
-    ApiClientBuildError, DecodeResponseError, NoContent, ProxyURLError, RequestError,
-};
+use crate::errors::ApiError::{DecodeResponseError, NoContent, RequestError};
 use crate::generation_controller::ContentRephraser;
 use crate::grok_api::dto::{GrokGenerateTextRequest, GrokGenerateTextResponse, GrokMessage};
 use async_trait::async_trait;
 use log::{info, warn};
-use reqwest::{Client, Proxy};
+use reqwest::Client;
 use tracing::error;
 use url::Url;
 
@@ -19,16 +17,9 @@ pub struct GrokApi {
 }
 
 impl GrokApi {
-    pub fn new(token: String, proxy_url: String) -> Result<Self, ApiError> {
-        let proxy = Proxy::all(proxy_url).map_err(ProxyURLError)?;
-
-        let client = Client::builder()
-            .proxy(proxy)
-            .build()
-            .map_err(ApiClientBuildError)?;
-
+    pub fn new(token: String, proxy_client: Client) -> Result<Self, ApiError> {
         Ok(GrokApi {
-            client,
+            client: proxy_client,
             token,
             model: Model::Grok,
         })

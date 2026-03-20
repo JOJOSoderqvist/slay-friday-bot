@@ -26,6 +26,7 @@ use crate::mistral_api::api::MistralApi;
 use crate::repo::dialogue_storage::UserDialogueStorage;
 use crate::repo::media_storage::storage::MediaStorage;
 use crate::repo::message_history_storage::MessageHistoryStorage;
+use crate::utils::get_client_with_proxy;
 use std::process;
 use std::sync::Arc;
 use teloxide::dispatching::UpdateFilterExt;
@@ -45,7 +46,16 @@ async fn main() {
         }
     };
 
-    let bot = Bot::new(cfg.tg_token);
+    let custom_proxy_client = match get_client_with_proxy(cfg.proxy_url.as_str()) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("error happened configuring custom client: {}", e);
+            process::exit(1);
+        }
+    };
+
+    let bot = Bot::with_client(cfg.tg_token, custom_proxy_client.clone());
+
     let gigachat_generator =
         match GigaChatApi::new(cfg.gigachat_client_id, cfg.gigachat_client_secret) {
             Ok(generator) => Arc::new(generator) as Arc<dyn ContentRephraser>,
@@ -58,7 +68,7 @@ async fn main() {
     let mistral_generator =
         Arc::new(MistralApi::new(cfg.mistral_token)) as Arc<dyn ContentRephraser>;
 
-    let grok_generator = match GrokApi::new(cfg.grok_token, cfg.proxy_url) {
+    let grok_generator = match GrokApi::new(cfg.grok_token, custom_proxy_client.clone()) {
         Ok(generator) => Arc::new(generator) as Arc<dyn ContentRephraser>,
         Err(e) => {
             eprintln!("error happened configuring generator: {}", e);
