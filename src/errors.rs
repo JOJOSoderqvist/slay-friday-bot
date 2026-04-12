@@ -63,6 +63,9 @@ pub enum ApiError {
 
     #[error("Command conversion error, unknown command: {0}")]
     CommandConversionError(String),
+
+    #[error("infra error happened {0}")]
+    InfraError(#[from] InfraError),
 }
 
 #[derive(Error, Debug)]
@@ -82,6 +85,12 @@ pub enum RepoError {
     #[error("Failed to change file {0}")]
     ChangeFileError(#[source] std::io::Error),
     // #[error()]
+}
+
+#[derive(Error, Debug)]
+pub enum InfraError {
+    #[error("Failed to connect to Postgres {0}")]
+    PGConnectError(#[source] sqlx::Error),
 }
 
 #[derive(Error, Debug)]
