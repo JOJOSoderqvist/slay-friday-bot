@@ -1,4 +1,4 @@
-create type media_type as enum ('sticker', 'gif');
+create type if not exists media_type as enum ('sticker', 'gif');
 
 
 create table if not exists "media" (
@@ -12,7 +12,7 @@ create table if not exists "media" (
 );
 
 create table if not exists "media_user_usage" (
-    "media_id" uuid not null references "media" on (id) on delete cascade,
+    "media_id" uuid not null references "media" (id) on delete cascade,
     "user_id" bigint not null,
     "usage_count" integer not null default 0,
     "created_at" timestamp with time zone not null default current_timestamp,
