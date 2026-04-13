@@ -15,10 +15,32 @@ services:
       - xray-proxy
       - loki
 
+  media_db:
+    image: postgres:18.3
+    ports:
+      - "5500:5432"
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=${MEDIA_DB_USER}
+      - POSTGRES_PASSWORD=${MEDIA_DB_PASSWORD}
+      - POSTGRES_DB=${MEDIA_DB_NAME}
+    volumes:
+      - media_data:/var/lib/postgresql/data/
+    container_name: media_db
+    restart: unless-stopped
+    networks:
+      - slay-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${USER_DB_USER} -d ${USER_DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   xray-proxy:
     image: teddysun/xray:26.2.6
     container_name: xray-proxy
-    command: [ "xray", "run", "-c", "/etc/xray/config.json" ]
+    command: ["xray", "run", "-c", "/etc/xray/config.json"]
     volumes:
       - ./xray-config.json:/etc/xray/config.json:ro
     ports:
@@ -59,6 +81,7 @@ services:
 volumes:
   loki_data:
   grafana_data:
+  media_data:
 
 networks:
   slay-network:

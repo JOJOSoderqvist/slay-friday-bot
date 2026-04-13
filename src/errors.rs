@@ -1,4 +1,5 @@
 use crate::common::Model;
+use sqlx::migrate::MigrateError;
 use std::env::VarError;
 use teloxide::RequestError;
 use teloxide::dispatching::dialogue::InMemStorageError;
@@ -91,6 +92,9 @@ pub enum RepoError {
 pub enum InfraError {
     #[error("Failed to connect to Postgres {0}")]
     PGConnectError(#[source] sqlx::Error),
+
+    #[error("Failed to run migrations {0}")]
+    MigrationsError(#[from] MigrateError),
 }
 
 #[derive(Error, Debug)]

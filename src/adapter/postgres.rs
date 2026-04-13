@@ -1,4 +1,4 @@
-use crate::errors::InfraError::{self, PGConnectError};
+use crate::errors::InfraError::{self, MigrationsError, PGConnectError};
 use sqlx::{Pool, Postgres, postgres::PgPoolOptions};
 
 const PG_POOL_MAX_CONNECTIONS: u32 = 5;
@@ -14,6 +14,11 @@ impl PgStore {
             .connect(conn_str)
             .await
             .map_err(PGConnectError)?;
+
+        sqlx::migrate!("./migrations")
+            .run(&pool)
+            .await
+            .map_err(MigrationsError)?;
 
         Ok(PgStore { pool })
     }
