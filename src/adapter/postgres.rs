@@ -4,7 +4,7 @@ use sqlx::{Pool, Postgres, postgres::PgPoolOptions};
 const PG_POOL_MAX_CONNECTIONS: u32 = 5;
 
 pub struct PgStore {
-    pool: Pool<Postgres>,
+    pub pool: Pool<Postgres>,
 }
 
 impl PgStore {

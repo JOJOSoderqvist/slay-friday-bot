@@ -1,4 +1,4 @@
-create type if not exists media_type as enum ('sticker', 'gif');
+create type media_type as enum ('sticker', 'gif');
 
 
 create table if not exists "media" (

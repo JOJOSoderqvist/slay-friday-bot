@@ -85,7 +85,9 @@ pub enum RepoError {
 
     #[error("Failed to change file {0}")]
     ChangeFileError(#[source] std::io::Error),
-    // #[error()]
+
+    #[error("DB error happened {0}")]
+    DBError(#[source] sqlx_core::error::Error),
 }
 
 #[derive(Error, Debug)]
