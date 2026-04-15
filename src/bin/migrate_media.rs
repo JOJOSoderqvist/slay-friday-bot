@@ -40,7 +40,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     tx.commit().await?;
-
+    
     println!(
         "Migrated {} media entries from {}",
         entries.len(),

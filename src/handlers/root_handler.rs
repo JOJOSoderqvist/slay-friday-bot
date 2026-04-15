@@ -10,13 +10,13 @@ use crate::handlers::model_info::model_info;
 use crate::handlers::rename_media::trigger_rename;
 use crate::handlers::slay::slay;
 use crate::repo::dialogue_storage::DialogueStorageKey;
-use crate::repo::media_storage::dto::MediaEntry;
+use crate::repo::media_storage_postgres::dto::MediaEntry;
 use crate::repo::message_history_storage::HistoryEntry;
 use crate::states::State;
 use async_trait::async_trait;
 use std::sync::Arc;
 use teloxide::Bot;
-use teloxide::prelude::{Message, Requester};
+use teloxide::prelude::{Message, Requester, UserId};
 use teloxide::types::ChatId;
 use teloxide::utils::command::BotCommands;
 use tracing::instrument;
@@ -35,15 +35,15 @@ pub trait MessageStore: Send + Sync {
 #[async_trait]
 pub trait MediaStore: Send + Sync {
     async fn add_media_entry(&self, media_entry: MediaEntry) -> Result<(), ApiError>;
-    async fn get_media_entry(&self, media_entry_name: &str) -> Option<MediaEntry>;
+    async fn get_media_entry(&self, media_entry_name: &str, user_id: UserId) -> Result<Option<MediaEntry>, ApiError>;
     async fn rename_media_entry(
         &self,
         old_entry_name: &str,
         new_entry_name: &str,
     ) -> Result<(), ApiError>;
-    async fn list_available_media_entries(&self) -> Option<Vec<MediaEntry>>;
-    async fn remove_media_entry(&self, media_entry_name: &str) -> Result<(), ApiError>;
-    async fn is_already_created(&self, media_entry_name: &str) -> bool;
+    async fn list_available_media_entries(&self, user_id: UserId) -> Result<Vec<MediaEntry>, ApiError>;
+    async fn remove_media_entry(&self, media_entry_name: &str) -> Result<bool, ApiError>;
+    async fn is_already_created(&self, media_entry_name: &str) -> Result<bool, ApiError>;
 }
 
 pub trait DialogueStore: Send + Sync {
