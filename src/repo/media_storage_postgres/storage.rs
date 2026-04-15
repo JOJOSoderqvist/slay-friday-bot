@@ -28,13 +28,13 @@ impl MediaStore for PGMediaStorage {
             r"insert into media (id, name, file_id, media_type, added_by)
                 values ($1, $2, $3, $4, $5);",
         )
-            .bind(media_entry.id)
-            .bind(media_entry.name)
-            .bind(media_entry.file_id)
-            .bind(media_entry.media_type)
-            .bind(media_entry.added_by)
-            .execute(&self.storage.pool)
-            .await
+        .bind(media_entry.id)
+        .bind(media_entry.name)
+        .bind(media_entry.file_id)
+        .bind(media_entry.media_type)
+        .bind(media_entry.added_by)
+        .execute(&self.storage.pool)
+        .await
         {
             Ok(..) => Ok(()),
             Err(sqlx::Error::Database(e)) => {
@@ -55,44 +55,44 @@ impl MediaStore for PGMediaStorage {
         media_entry_name: &str,
         user_id: UserId,
     ) -> Result<Option<MediaEntry>, ApiError> {
-
         let mut tx = self.storage.pool.begin().await.map_err(DBError)?;
 
         let media_entry = sqlx::query_as::<_, MediaEntry>(
             r"select id, name, file_id, media_type, added_by, created_at, updated_at
                   from media where name = $1;",
         )
-            .bind(media_entry_name)
-            .fetch_optional(&mut *tx)
-            .await
-            .map_err(DBError)?;
-
+        .bind(media_entry_name)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(DBError)?;
 
         let entry: MediaEntry = match media_entry {
             None => {
                 tx.commit().await.map_err(DBError)?;
-                return Ok(None)
+                return Ok(None);
             }
             Some(e) => e,
         };
-
 
         let res = sqlx::query(
             r"insert into media_user_usage (media_id, user_id)
                 values ($1, $2)
                 on CONFLICT (media_id, user_id) do update
-                set usage_count = media_user_usage.usage_count + 1;"
+                set usage_count = media_user_usage.usage_count + 1;",
         )
-            .bind(entry.id)
-            .bind(user_id.0 as i64)
-            .execute(&mut *tx)
-            .await
-            .map_err(DBError)?;
+        .bind(entry.id)
+        .bind(user_id.0 as i64)
+        .execute(&mut *tx)
+        .await
+        .map_err(DBError)?;
+
+        println!("{}", res.rows_affected());
 
         if res.rows_affected() != 1 {
             warn!(%entry.id, %user_id, "failed to increment usage count")
         }
-
+        
+        tx.commit().await.map_err(DBError)?;
         Ok(Some(entry))
     }
 
@@ -115,9 +115,25 @@ impl MediaStore for PGMediaStorage {
         Ok(())
     }
 
-    async fn list_available_media_entries(&self, user_id: UserId) -> Result<Vec<MediaEntry>, ApiError> {
+    async fn list_available_media_entries(&self) -> Result<Vec<MediaEntry>, ApiError> {
         let media_entries = sqlx::query_as::<_, MediaEntry>(
             r"select m.id, m.name, m.file_id, m.media_type, m.added_by, m.created_at, m.updated_at from media m
+                order by m.name desc;"
+        )
+            .fetch_all(&self.storage.pool)
+            .await
+            .map_err(DBError)?;
+
+        Ok(media_entries)
+    }
+
+    async fn list_user_specific_media_entries(
+        &self,
+        user_id: UserId,
+    ) -> Result<Vec<MediaEntry>, ApiError> {
+        let media_entries = sqlx::query_as::<_, MediaEntry>(
+            r"select m.id, m.name, m.file_id, m.media_type, m.added_by, m.created_at, m.updated_at
+                from media m
                 left join media_user_usage mu on mu.user_id = $1 and mu.media_id = m.id
                 order by mu.usage_count desc;"
         )

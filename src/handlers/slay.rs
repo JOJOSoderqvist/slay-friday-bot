@@ -4,7 +4,7 @@ use crate::errors::ApiError;
 use crate::handlers::add_media::trigger_add;
 use crate::handlers::delete_media::trigger_delete;
 use crate::handlers::friday::friday;
-use crate::handlers::list_available_media::list_media;
+use crate::handlers::list_available_media::list_default;
 use crate::handlers::rename_media::trigger_rename;
 use crate::handlers::root_handler::{ContentGenerator, DialogueStore, MessageStore, help};
 use crate::handlers::utils::get_user_id_from_option;
@@ -76,22 +76,15 @@ pub async fn inline_choice_callback(
             Ok(())
         }
         Command::ListMedia => {
-            list_media(bot, chat_id, media_store).await?;
+            list_default(bot, chat_id, media_store).await?;
             Ok(())
         }
         Command::GetMedia(_) => {
-            let media_list = media_store.list_available_media_entries().await;
-            let mut available_media_entries = match media_list {
-                None => {
-                    bot.send_message(chat_id, "No stickers available").await?;
-                    return Ok(());
-                }
-                Some(media) => media,
-            };
+            let media_entries = media_store.list_user_specific_media_entries(q.from.id).await?;
 
-            available_media_entries.sort();
 
-            let keyboard = reply_suggestions_keyboard(available_media_entries.as_slice(), "/get");
+
+            let keyboard = reply_suggestions_keyboard(media_entries.as_slice(), "/get");
 
             bot.send_message(chat_id, "Выберите медиафайл")
                 .reply_markup(keyboard)

@@ -3,6 +3,7 @@ use crate::repo::dialogue_storage::DialogueStorageKey;
 use crate::states::State;
 use std::sync::Arc;
 use teloxide::types::{FileId, Message, User, UserId};
+use crate::repo::media_storage_postgres::dto::MediaType;
 
 pub fn get_user_id_from_option(from: &Option<User>) -> Option<UserId> {
     from.as_ref().map(|u| u.id)
@@ -19,12 +20,12 @@ pub fn get_current_state(msg: &Message, dialogue: Arc<dyn DialogueStore>) -> Opt
     dialogue.get_dialogue(&key)
 }
 
-pub fn extract_media_file_id(msg: &Message) -> Option<&FileId> {
+pub fn extract_media_file_id(msg: &Message) -> (Option<&FileId>, Option<MediaType>) {
     match msg.animation() {
-        Some(a) => Some(&a.file.id),
+        Some(a) => (Some(&a.file.id), Some(MediaType::Gif)),
         None => match msg.sticker() {
-            Some(s) => Some(&s.file.id),
-            None => None,
+            Some(s) => (Some(&s.file.id), Some(MediaType::Sticker)),
+            None => (None, None),
         },
     }
 }

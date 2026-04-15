@@ -5,7 +5,7 @@ use crate::handlers::add_media::trigger_add;
 use crate::handlers::delete_media::trigger_delete;
 use crate::handlers::friday::friday;
 use crate::handlers::get_media::get_media;
-use crate::handlers::list_available_media::list_media;
+use crate::handlers::list_available_media::list_default;
 use crate::handlers::model_info::model_info;
 use crate::handlers::rename_media::trigger_rename;
 use crate::handlers::slay::slay;
@@ -41,7 +41,9 @@ pub trait MediaStore: Send + Sync {
         old_entry_name: &str,
         new_entry_name: &str,
     ) -> Result<(), ApiError>;
-    async fn list_available_media_entries(&self, user_id: UserId) -> Result<Vec<MediaEntry>, ApiError>;
+    async fn list_available_media_entries(&self) -> Result<Vec<MediaEntry>, ApiError>;
+    async fn list_user_specific_media_entries(&self, user_id: UserId) -> Result<Vec<MediaEntry>, ApiError>;
+
     async fn remove_media_entry(&self, media_entry_name: &str) -> Result<bool, ApiError>;
     async fn is_already_created(&self, media_entry_name: &str) -> Result<bool, ApiError>;
 }
@@ -69,7 +71,7 @@ pub async fn handle_command(
 
         Command::Model => model_info(bot, msg, message_store).await?,
 
-        Command::ListMedia => list_media(bot, msg.chat.id, media_store).await?,
+        Command::ListMedia => list_default(bot, msg.chat.id, media_store).await?,
 
         Command::AddMedia => trigger_add(bot, msg.chat.id, msg.from, dialogue).await?,
 

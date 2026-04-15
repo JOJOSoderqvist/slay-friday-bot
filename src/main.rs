@@ -25,17 +25,20 @@ use crate::handlers::slay::inline_choice_callback;
 use crate::handlers::state_dispatcher::state_dispatcher;
 use crate::mistral_api::api::MistralApi;
 use crate::repo::dialogue_storage::UserDialogueStorage;
-use crate::repo::media_storage::storage::MediaStorage;
+use crate::repo::media_storage_postgres::storage::PGMediaStorage;
 use crate::repo::message_history_storage::MessageHistoryStorage;
 use crate::utils::get_client_with_proxy;
 use std::process;
 use std::sync::Arc;
+use chrono::Month::March;
 use teloxide::dispatching::UpdateFilterExt;
 use teloxide::prelude::*;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, fmt};
 use url::Url;
+use crate::adapter::postgres::PgStore;
+use crate::errors::InfraError;
 
 #[tokio::main]
 async fn main() {
@@ -55,7 +58,9 @@ async fn main() {
         }
     };
 
-    let bot = Bot::with_client(cfg.tg_token, custom_proxy_client.clone());
+    // let bot = Bot::with_client(cfg.tg_token, custom_proxy_client.clone());
+
+    let bot = Bot::new(cfg.tg_token);
 
     let gigachat_generator =
         match GigaChatApi::new(cfg.gigachat_client_id, cfg.gigachat_client_secret) {
@@ -77,13 +82,16 @@ async fn main() {
         }
     };
 
-    let media_storage = match MediaStorage::new("sticker_storage.json".to_string()).await {
-        Ok(storage) => Arc::new(storage) as Arc<dyn MediaStore>,
+
+    let pg_pool = match PgStore::new(cfg.db_conn_str.as_str()).await {
+        Ok(s) => {s}
         Err(e) => {
             eprintln!("error happened configuring sticker storage: {}", e);
             process::exit(1);
         }
     };
+
+    let media_storage = Arc::new(PGMediaStorage::new(pg_pool)) as Arc<dyn MediaStore>;
 
     let message_history_storage = Arc::new(MessageHistoryStorage::new()) as Arc<dyn MessageStore>;
 

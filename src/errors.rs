@@ -124,4 +124,7 @@ pub enum BotConfigError {
 
     #[error("Environment variable 'LOG_LEVEL' not found")]
     LogLevelNotFound(#[source] VarError),
+
+    #[error("Environment variable 'DATABASE_URL' not found")]
+    DBURLNotFound(#[source] VarError),
 }
