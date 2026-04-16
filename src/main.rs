@@ -56,9 +56,9 @@ async fn main() {
         }
     };
 
-    // let bot = Bot::with_client(cfg.tg_token, custom_proxy_client.clone());
+    let bot = Bot::with_client(cfg.tg_token, custom_proxy_client.clone());
 
-    let bot = Bot::new(cfg.tg_token);
+    // let bot = Bot::new(cfg.tg_token);
 
     let gigachat_generator =
         match GigaChatApi::new(cfg.gigachat_client_id, cfg.gigachat_client_secret) {
