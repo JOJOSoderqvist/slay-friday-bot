@@ -6,19 +6,60 @@ services:
       - .env
     environment:
       - RUST_LOG=info
-    volumes:
-      - ./sticker_storage.json:/app/sticker_storage.json
     networks:
       - slay-network
     restart: unless-stopped
     depends_on:
-      - xray-proxy
-      - loki
+      xray-proxy:
+        condition: service_started
+      loki:
+        condition: service_started
+      media_db:
+        condition: service_healthy
+      media_migrator:
+        condition: service_completed_successfully
+
+  media_migrator:
+    image: ghcr.io/jojosoderqvist/slay-friday-bot:main
+    container_name: media_migrator
+    env_file:
+      - .env
+    command: ["./migrate_media"]
+    volumes:
+      - ./sticker_storage.json:/app/sticker_storage.json:ro
+    networks:
+      - slay-network
+    restart: "no"
+    depends_on:
+      media_db:
+        condition: service_healthy
+
+  media_db:
+    image: postgres:18.3
+    ports:
+      - "5500:5432"
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=${MEDIA_DB_USER}
+      - POSTGRES_PASSWORD=${MEDIA_DB_PASSWORD}
+      - POSTGRES_DB=${MEDIA_DB_NAME}
+    volumes:
+      - media_data:/var/lib/postgresql
+    container_name: media_db
+    restart: unless-stopped
+    networks:
+      - slay-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${MEDIA_DB_USER} -d ${MEDIA_DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   xray-proxy:
     image: teddysun/xray:26.2.6
     container_name: xray-proxy
-    command: [ "xray", "run", "-c", "/etc/xray/config.json" ]
+    command: ["xray", "run", "-c", "/etc/xray/config.json"]
     volumes:
       - ./xray-config.json:/etc/xray/config.json:ro
     ports:
@@ -59,6 +100,7 @@ services:
 volumes:
   loki_data:
   grafana_data:
+  media_data:
 
 networks:
   slay-network:

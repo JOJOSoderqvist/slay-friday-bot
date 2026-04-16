@@ -4,7 +4,7 @@ use crate::handlers::root_handler::{DialogueStore, MediaStore};
 use crate::handlers::utils::{
     extract_media_file_id, get_current_state, get_key, get_user_id_from_option,
 };
-use crate::repo::media_storage::dto::MediaEntry;
+use crate::repo::media_storage_postgres::dto::MediaEntry;
 use crate::states::State;
 use std::sync::Arc;
 use teloxide::Bot;
@@ -60,17 +60,32 @@ pub async fn process_new_name(
         return Ok(());
     };
 
-    if media_store.is_already_created(media_name).await {
-        bot.send_message(
-            msg.chat.id,
-            format!(
-                "Медиафайл с именем {} уже существует, попробуй другое",
-                media_name
-            ),
-        )
-        .await?;
-        return Ok(());
-    };
+    match media_store.is_already_created(media_name).await {
+        Ok(is_created) => {
+            if is_created {
+                bot.send_message(
+                    msg.chat.id,
+                    format!(
+                        "Медиафайл с именем {} уже существует, попробуй другое",
+                        media_name
+                    ),
+                )
+                .await?;
+                return Ok(());
+            }
+        }
+
+        Err(e) => {
+            bot.send_message(
+                msg.chat.id,
+                "Произошла ошибка при проверке стикера на существование",
+            )
+            .await?;
+
+            error!(error = %e, "Failed to check sticker existance");
+            return Ok(());
+        }
+    }
 
     dialogue.update_dialogue(
         key,
@@ -103,7 +118,7 @@ pub async fn receive_media(
         return Ok(());
     };
 
-    let Some(file_id) = extract_media_file_id(&msg) else {
+    let (Some(file_id), Some(media_type)) = extract_media_file_id(&msg) else {
         bot.send_message(
             msg.chat.id,
             "Это не стикер и не gif. Отправьте стикер, gif или команду /cancel.",
@@ -112,7 +127,7 @@ pub async fn receive_media(
         return Ok(());
     };
 
-    let media_entry = MediaEntry::new(media_entry_name, file_id.to_string());
+    let media_entry = MediaEntry::new(media_entry_name, file_id.to_string(), key.0, media_type);
     match media_store.add_media_entry(media_entry).await {
         Ok(_) => {
             bot.send_message(msg.chat.id, "Медиафайл сохранен! 🎉")

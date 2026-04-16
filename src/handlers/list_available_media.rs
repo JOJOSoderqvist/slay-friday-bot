@@ -5,23 +5,26 @@ use std::sync::Arc;
 use teloxide::Bot;
 use teloxide::prelude::*;
 use teloxide::types::ParseMode;
-use tracing::instrument;
+use tracing::{error, instrument};
 
 #[instrument(skip(bot, chat_id, media_store))]
-pub async fn list_media(
+pub async fn list_default(
     bot: Bot,
     chat_id: ChatId,
     media_store: Arc<dyn MediaStore>,
 ) -> Result<(), ApiError> {
     match media_store.list_available_media_entries().await {
-        Some(entries) => {
-            let mut names: Vec<String> = entries.into_iter().map(|e| e.name).collect();
+        Ok(entries) => {
+            if entries.is_empty() {
+                debug!("No media in storage");
+                bot.send_message(chat_id, "Список медиафайлов пуст").await?;
+                return Ok(());
+            }
 
-            names.sort();
-
-            names.iter_mut().for_each(|name| {
-                *name = format!("`{name}`");
-            });
+            let names: Vec<String> = entries
+                .into_iter()
+                .map(|e| format!("`{}`", e.name))
+                .collect();
 
             bot.send_message(
                 chat_id,
@@ -30,9 +33,12 @@ pub async fn list_media(
             .parse_mode(ParseMode::MarkdownV2)
             .await?;
         }
-        None => {
-            debug!("No media in storage");
-            bot.send_message(chat_id, "Список медиафайлов пуст").await?;
+
+        Err(e) => {
+            bot.send_message(chat_id, "Произошла ошибка получения медиафайлов")
+                .await?;
+            error!(error = %e, "Failed to get mediafiles");
+            return Err(e);
         }
     }
 

@@ -1,0 +1,90 @@
+use std::env;
+use std::error::Error;
+use std::io::ErrorKind;
+
+use tokio::fs;
+use uuid::Uuid;
+
+use slay_friday_bot::adapter::postgres::PgStore;
+use slay_friday_bot::repo::media_storage::dto::MediaEntry as JsonMediaEntry;
+
+const DEFAULT_MEDIA_JSON_PATH: &str = "sticker_storage.json";
+const DEFAULT_MEDIA_DB_HOST: &str = "127.0.0.1";
+const DEFAULT_MEDIA_DB_PORT: &str = "5500";
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
+    dotenvy::dotenv().ok();
+
+    let json_path =
+        env::var("MEDIA_JSON_PATH").unwrap_or_else(|_| DEFAULT_MEDIA_JSON_PATH.to_string());
+    let db_url = get_db_url()?;
+
+    let raw = match fs::read_to_string(&json_path).await {
+        Ok(raw) => raw,
+        Err(err) if err.kind() == ErrorKind::NotFound => {
+            println!(
+                "Media source file {} not found, skipping data migration",
+                json_path
+            );
+            return Ok(());
+        }
+        Err(err) => return Err(err.into()),
+    };
+    let entries: Vec<JsonMediaEntry> = serde_json::from_str(&raw)?;
+
+    let pg = PgStore::new(&db_url).await?;
+    let mut tx = pg.pool.begin().await?;
+    let mut inserted = 0;
+    let mut skipped = 0;
+
+    for entry in &entries {
+        let result = sqlx::query(
+            r#"
+            insert into media (id, name, file_id, media_type, added_by)
+            values ($1, $2, $3, 'sticker'::media_type, null)
+            on conflict (name) do nothing
+            "#,
+        )
+        .bind(Uuid::new_v4())
+        .bind(&entry.name)
+        .bind(&entry.file_id)
+        .execute(&mut *tx)
+        .await?;
+
+        if result.rows_affected() == 1 {
+            inserted += 1;
+        } else {
+            skipped += 1;
+        }
+    }
+
+    tx.commit().await?;
+
+    println!(
+        "Processed {} media entries from {} (inserted: {}, skipped: {})",
+        entries.len(),
+        json_path,
+        inserted,
+        skipped
+    );
+
+    Ok(())
+}
+
+fn get_db_url() -> Result<String, Box<dyn Error>> {
+    if let Ok(db_url) = env::var("MEDIA_DB_URL") {
+        return Ok(db_url);
+    }
+
+    let user = env::var("MEDIA_DB_USER")?;
+    let password = env::var("MEDIA_DB_PASSWORD")?;
+    let db_name = env::var("MEDIA_DB_NAME")?;
+    let host = env::var("MEDIA_DB_HOST").unwrap_or_else(|_| DEFAULT_MEDIA_DB_HOST.to_string());
+    let port = env::var("MEDIA_DB_PORT").unwrap_or_else(|_| DEFAULT_MEDIA_DB_PORT.to_string());
+
+    Ok(format!(
+        "postgres://{}:{}@{}:{}/{}?sslmode=disable",
+        user, password, host, port, db_name
+    ))
+}

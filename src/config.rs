@@ -1,7 +1,7 @@
 use crate::errors::BotConfigError;
 use crate::errors::BotConfigError::{
-    BotTokenNotFound, GigaChatClientIDNotFound, GigaChatClientSecretNotFound, LogLevelNotFound,
-    MistralTokenNotFound, ParseLogLevelError, ProxyURLNotFound, XAITokenNotFound,
+    BotTokenNotFound, DBURLNotFound, GigaChatClientIDNotFound, GigaChatClientSecretNotFound,
+    LogLevelNotFound, MistralTokenNotFound, ParseLogLevelError, ProxyURLNotFound, XAITokenNotFound,
 };
 use dotenvy::dotenv;
 use std::env;
@@ -16,6 +16,7 @@ pub struct BotConfig {
     pub grok_token: String,
     pub proxy_url: String,
     pub log_level: Level,
+    pub db_conn_str: String,
 }
 
 impl BotConfig {
@@ -40,6 +41,8 @@ impl BotConfig {
         let log_level =
             Level::from_str(&log_level_str).map_err(|_| ParseLogLevelError(log_level_str))?;
 
+        let db_conn_str = env::var("DATABASE_URL").map_err(DBURLNotFound)?;
+
         Ok(BotConfig {
             tg_token,
             gigachat_client_id,
@@ -48,6 +51,7 @@ impl BotConfig {
             grok_token,
             proxy_url,
             log_level,
+            db_conn_str,
         })
     }
 }

@@ -1,3 +1,4 @@
+mod adapter;
 mod commands;
 mod common;
 mod config;
@@ -12,6 +13,7 @@ mod repo;
 mod states;
 mod utils;
 
+use crate::adapter::postgres::PgStore;
 use crate::commands::Command;
 use crate::config::BotConfig;
 use crate::generation_controller::{ContentRephraser, GenerationController, ModelPool};
@@ -24,7 +26,7 @@ use crate::handlers::slay::inline_choice_callback;
 use crate::handlers::state_dispatcher::state_dispatcher;
 use crate::mistral_api::api::MistralApi;
 use crate::repo::dialogue_storage::UserDialogueStorage;
-use crate::repo::media_storage::storage::MediaStorage;
+use crate::repo::media_storage_postgres::storage::PGMediaStorage;
 use crate::repo::message_history_storage::MessageHistoryStorage;
 use crate::utils::get_client_with_proxy;
 use std::process;
@@ -54,7 +56,9 @@ async fn main() {
         }
     };
 
-    let bot = Bot::with_client(cfg.tg_token, custom_proxy_client.clone());
+    // let bot = Bot::with_client(cfg.tg_token, custom_proxy_client.clone());
+
+    let bot = Bot::new(cfg.tg_token);
 
     let gigachat_generator =
         match GigaChatApi::new(cfg.gigachat_client_id, cfg.gigachat_client_secret) {
@@ -76,13 +80,15 @@ async fn main() {
         }
     };
 
-    let media_storage = match MediaStorage::new("sticker_storage.json".to_string()).await {
-        Ok(storage) => Arc::new(storage) as Arc<dyn MediaStore>,
+    let pg_pool = match PgStore::new(cfg.db_conn_str.as_str()).await {
+        Ok(s) => s,
         Err(e) => {
             eprintln!("error happened configuring sticker storage: {}", e);
             process::exit(1);
         }
     };
+
+    let media_storage = Arc::new(PGMediaStorage::new(pg_pool)) as Arc<dyn MediaStore>;
 
     let message_history_storage = Arc::new(MessageHistoryStorage::new()) as Arc<dyn MessageStore>;
 

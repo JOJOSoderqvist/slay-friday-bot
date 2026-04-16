@@ -14,6 +14,7 @@ impl Display for MediaEntry {
 }
 
 impl MediaEntry {
+    #[allow(unused)]
     pub fn new(name: String, file_id: String) -> Self {
         MediaEntry { name, file_id }
     }

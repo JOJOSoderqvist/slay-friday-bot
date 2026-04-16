@@ -59,17 +59,29 @@ pub async fn rename_media(
         return Ok(());
     };
 
-    if !media_store.is_already_created(media_entry_name).await {
-        bot.send_message(
-            msg.chat.id,
-            format!(
-                "Медиафайл с именем {} не существует, попробуй другое",
-                media_entry_name
-            ),
-        )
-        .await?;
-        return Ok(());
-    };
+    match media_store.is_already_created(media_entry_name).await {
+        Ok(is_created) => {
+            if !is_created {
+                bot.send_message(
+                    msg.chat.id,
+                    format!(
+                        "Медиафайл с именем {} не существует, попробуй другое",
+                        media_entry_name
+                    ),
+                )
+                .await?;
+                return Ok(());
+            }
+        }
+        Err(e) => {
+            bot.send_message(msg.chat.id, "Не удалось проверить стикер на существование")
+                .await?;
+
+            error!(error = %e, "Failed to check whether sticker exists");
+
+            return Ok(());
+        }
+    }
 
     dialogue.update_dialogue(
         key,

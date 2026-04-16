@@ -1,4 +1,5 @@
 use crate::common::Model;
+use sqlx::migrate::MigrateError;
 use std::env::VarError;
 use teloxide::RequestError;
 use teloxide::dispatching::dialogue::InMemStorageError;
@@ -63,9 +64,13 @@ pub enum ApiError {
 
     #[error("Command conversion error, unknown command: {0}")]
     CommandConversionError(String),
+
+    #[error("infra error happened {0}")]
+    InfraError(#[from] InfraError),
 }
 
 #[derive(Error, Debug)]
+#[allow(unused)]
 pub enum RepoError {
     #[error("Failed to open storage file {0}")]
     FailedToOpenFile(#[source] std::io::Error),
@@ -81,7 +86,18 @@ pub enum RepoError {
 
     #[error("Failed to change file {0}")]
     ChangeFileError(#[source] std::io::Error),
-    // #[error()]
+
+    #[error("DB error happened {0}")]
+    DBError(#[source] sqlx_core::error::Error),
+}
+
+#[derive(Error, Debug)]
+pub enum InfraError {
+    #[error("Failed to connect to Postgres {0}")]
+    PGConnectError(#[source] sqlx::Error),
+
+    #[error("Failed to run migrations {0}")]
+    MigrationsError(#[from] MigrateError),
 }
 
 #[derive(Error, Debug)]
@@ -109,4 +125,7 @@ pub enum BotConfigError {
 
     #[error("Environment variable 'LOG_LEVEL' not found")]
     LogLevelNotFound(#[source] VarError),
+
+    #[error("Environment variable 'DATABASE_URL' not found")]
+    DBURLNotFound(#[source] VarError),
 }
