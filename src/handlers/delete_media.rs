@@ -63,13 +63,13 @@ pub async fn delete_media(
                     msg.chat.id,
                     format!("Медиа {} успешно удалено", media_entry_name),
                 )
-                    .await?;
+                .await?;
             } else {
                 bot.send_message(
                     msg.chat.id,
                     format!("Медиа с названием {} нет", media_entry_name),
                 )
-                    .await?;
+                .await?;
             }
 
             dialogue.remove_dialogue(&key);

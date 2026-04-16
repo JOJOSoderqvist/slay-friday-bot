@@ -1,5 +1,6 @@
 use std::env;
 use std::error::Error;
+use std::io::ErrorKind;
 
 use tokio::fs;
 use uuid::Uuid;
@@ -19,17 +20,30 @@ async fn main() -> Result<(), Box<dyn Error>> {
         env::var("MEDIA_JSON_PATH").unwrap_or_else(|_| DEFAULT_MEDIA_JSON_PATH.to_string());
     let db_url = get_db_url()?;
 
-    let raw = fs::read_to_string(&json_path).await?;
+    let raw = match fs::read_to_string(&json_path).await {
+        Ok(raw) => raw,
+        Err(err) if err.kind() == ErrorKind::NotFound => {
+            println!(
+                "Media source file {} not found, skipping data migration",
+                json_path
+            );
+            return Ok(());
+        }
+        Err(err) => return Err(err.into()),
+    };
     let entries: Vec<JsonMediaEntry> = serde_json::from_str(&raw)?;
 
     let pg = PgStore::new(&db_url).await?;
     let mut tx = pg.pool.begin().await?;
+    let mut inserted = 0;
+    let mut skipped = 0;
 
     for entry in &entries {
-        sqlx::query(
+        let result = sqlx::query(
             r#"
             insert into media (id, name, file_id, media_type, added_by)
             values ($1, $2, $3, 'sticker'::media_type, null)
+            on conflict (name) do nothing
             "#,
         )
         .bind(Uuid::new_v4())
@@ -37,14 +51,22 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .bind(&entry.file_id)
         .execute(&mut *tx)
         .await?;
+
+        if result.rows_affected() == 1 {
+            inserted += 1;
+        } else {
+            skipped += 1;
+        }
     }
 
     tx.commit().await?;
 
     println!(
-        "Migrated {} media entries from {}",
+        "Processed {} media entries from {} (inserted: {}, skipped: {})",
         entries.len(),
-        json_path
+        json_path,
+        inserted,
+        skipped
     );
 
     Ok(())

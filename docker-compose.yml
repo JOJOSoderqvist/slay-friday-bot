@@ -6,15 +6,33 @@ services:
       - .env
     environment:
       - RUST_LOG=info
-    volumes:
-      - ./sticker_storage.json:/app/sticker_storage.json
     networks:
       - slay-network
     restart: unless-stopped
     depends_on:
-      - xray-proxy
-      - loki
-      - media_db
+      xray-proxy:
+        condition: service_started
+      loki:
+        condition: service_started
+      media_db:
+        condition: service_healthy
+      media_migrator:
+        condition: service_completed_successfully
+
+  media_migrator:
+    image: ghcr.io/jojosoderqvist/slay-friday-bot:main
+    container_name: media_migrator
+    env_file:
+      - .env
+    command: ["./migrate_media"]
+    volumes:
+      - ./sticker_storage.json:/app/sticker_storage.json:ro
+    networks:
+      - slay-network
+    restart: "no"
+    depends_on:
+      media_db:
+        condition: service_healthy
 
   media_db:
     image: postgres:18.3

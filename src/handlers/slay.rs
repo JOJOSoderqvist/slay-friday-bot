@@ -86,7 +86,17 @@ pub async fn inline_choice_callback(
 
             let keyboard = reply_suggestions_keyboard(media_entries.as_slice(), "/get");
 
-            bot.send_message(chat_id, "Выберите медиафайл")
+            let Some(username) = q.from.username else {
+                bot.send_message(
+                    chat_id,
+                    "Чтобы воспользоваться этим меню у вас должно быть имя пользователя",
+                )
+                .await?;
+
+                return Ok(());
+            };
+
+            bot.send_message(chat_id, format!("@{username} выберете медиафайл"))
                 .reply_markup(keyboard)
                 .await?;
 
