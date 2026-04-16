@@ -147,7 +147,7 @@ impl MediaStore for PGMediaStorage {
             .execute(&self.storage.pool)
             .await
             .map_err(DBError)?;
-
+        
         Ok(res.rows_affected() == 1)
     }
 

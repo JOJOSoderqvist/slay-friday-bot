@@ -57,24 +57,22 @@ pub async fn delete_media(
     };
 
     match media_store.remove_media_entry(media_entry_name).await {
-        Ok(_) => {
-            bot.send_message(
-                msg.chat.id,
-                format!("Медиа {} успешно удалено", media_entry_name),
-            )
-            .await?;
-            dialogue.remove_dialogue(&key);
-        }
+        Ok(res) => {
+            if res {
+                bot.send_message(
+                    msg.chat.id,
+                    format!("Медиа {} успешно удалено", media_entry_name),
+                )
+                    .await?;
+            } else {
+                bot.send_message(
+                    msg.chat.id,
+                    format!("Медиа с названием {} нет", media_entry_name),
+                )
+                    .await?;
+            }
 
-        Err(ApiError::MediaNotFound) => {
-            bot.send_message(
-                msg.chat.id,
-                format!(
-                    "Медиа с названием {} не найдено, попробуйте другое название",
-                    media_entry_name
-                ),
-            )
-            .await?;
+            dialogue.remove_dialogue(&key);
         }
 
         Err(e) => {
