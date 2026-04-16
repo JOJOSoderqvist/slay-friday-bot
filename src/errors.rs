@@ -70,6 +70,7 @@ pub enum ApiError {
 }
 
 #[derive(Error, Debug)]
+#[allow(unused)]
 pub enum RepoError {
     #[error("Failed to open storage file {0}")]
     FailedToOpenFile(#[source] std::io::Error),

@@ -70,7 +70,7 @@ pub async fn process_new_name(
                         media_name
                     ),
                 )
-                    .await?;
+                .await?;
                 return Ok(());
             }
         }
@@ -78,9 +78,9 @@ pub async fn process_new_name(
         Err(e) => {
             bot.send_message(
                 msg.chat.id,
-                "Произошла ошибка при проверке стикера на существование"
+                "Произошла ошибка при проверке стикера на существование",
             )
-                .await?;
+            .await?;
 
             error!(error = %e, "Failed to check sticker existance");
             return Ok(());

@@ -4,8 +4,8 @@ use std::error::Error;
 use tokio::fs;
 use uuid::Uuid;
 
-use slayFridayBot::adapter::postgres::PgStore;
-use slayFridayBot::repo::media_storage::dto::MediaEntry as JsonMediaEntry;
+use slay_friday_bot::adapter::postgres::PgStore;
+use slay_friday_bot::repo::media_storage::dto::MediaEntry as JsonMediaEntry;
 
 const DEFAULT_MEDIA_JSON_PATH: &str = "sticker_storage.json";
 const DEFAULT_MEDIA_DB_HOST: &str = "127.0.0.1";
@@ -15,8 +15,8 @@ const DEFAULT_MEDIA_DB_PORT: &str = "5500";
 async fn main() -> Result<(), Box<dyn Error>> {
     dotenvy::dotenv().ok();
 
-    let json_path = env::var("MEDIA_JSON_PATH")
-        .unwrap_or_else(|_| DEFAULT_MEDIA_JSON_PATH.to_string());
+    let json_path =
+        env::var("MEDIA_JSON_PATH").unwrap_or_else(|_| DEFAULT_MEDIA_JSON_PATH.to_string());
     let db_url = get_db_url()?;
 
     let raw = fs::read_to_string(&json_path).await?;
@@ -40,7 +40,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     tx.commit().await?;
-    
+
     println!(
         "Migrated {} media entries from {}",
         entries.len(),
@@ -58,10 +58,8 @@ fn get_db_url() -> Result<String, Box<dyn Error>> {
     let user = env::var("MEDIA_DB_USER")?;
     let password = env::var("MEDIA_DB_PASSWORD")?;
     let db_name = env::var("MEDIA_DB_NAME")?;
-    let host =
-        env::var("MEDIA_DB_HOST").unwrap_or_else(|_| DEFAULT_MEDIA_DB_HOST.to_string());
-    let port =
-        env::var("MEDIA_DB_PORT").unwrap_or_else(|_| DEFAULT_MEDIA_DB_PORT.to_string());
+    let host = env::var("MEDIA_DB_HOST").unwrap_or_else(|_| DEFAULT_MEDIA_DB_HOST.to_string());
+    let port = env::var("MEDIA_DB_PORT").unwrap_or_else(|_| DEFAULT_MEDIA_DB_PORT.to_string());
 
     Ok(format!(
         "postgres://{}:{}@{}:{}/{}?sslmode=disable",

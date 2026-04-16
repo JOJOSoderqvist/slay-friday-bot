@@ -80,9 +80,9 @@ pub async fn inline_choice_callback(
             Ok(())
         }
         Command::GetMedia(_) => {
-            let media_entries = media_store.list_user_specific_media_entries(q.from.id).await?;
-
-
+            let media_entries = media_store
+                .list_user_specific_media_entries(q.from.id)
+                .await?;
 
             let keyboard = reply_suggestions_keyboard(media_entries.as_slice(), "/get");
 

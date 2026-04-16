@@ -13,6 +13,7 @@ mod repo;
 mod states;
 mod utils;
 
+use crate::adapter::postgres::PgStore;
 use crate::commands::Command;
 use crate::config::BotConfig;
 use crate::generation_controller::{ContentRephraser, GenerationController, ModelPool};
@@ -30,15 +31,12 @@ use crate::repo::message_history_storage::MessageHistoryStorage;
 use crate::utils::get_client_with_proxy;
 use std::process;
 use std::sync::Arc;
-use chrono::Month::March;
 use teloxide::dispatching::UpdateFilterExt;
 use teloxide::prelude::*;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, fmt};
 use url::Url;
-use crate::adapter::postgres::PgStore;
-use crate::errors::InfraError;
 
 #[tokio::main]
 async fn main() {
@@ -82,9 +80,8 @@ async fn main() {
         }
     };
 
-
     let pg_pool = match PgStore::new(cfg.db_conn_str.as_str()).await {
-        Ok(s) => {s}
+        Ok(s) => s,
         Err(e) => {
             eprintln!("error happened configuring sticker storage: {}", e);
             process::exit(1);

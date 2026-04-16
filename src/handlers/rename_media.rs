@@ -58,7 +58,7 @@ pub async fn rename_media(
         .await?;
         return Ok(());
     };
-    
+
     match media_store.is_already_created(media_entry_name).await {
         Ok(is_created) => {
             if !is_created {
@@ -69,23 +69,19 @@ pub async fn rename_media(
                         media_entry_name
                     ),
                 )
-                    .await?;
+                .await?;
                 return Ok(());
             }
         }
         Err(e) => {
-            bot.send_message(
-                msg.chat.id,
-                "Не удалось проверить стикер на существование"
-            )
+            bot.send_message(msg.chat.id, "Не удалось проверить стикер на существование")
                 .await?;
-            
+
             error!(error = %e, "Failed to check whether sticker exists");
-            
+
             return Ok(());
         }
     }
-
 
     dialogue.update_dialogue(
         key,

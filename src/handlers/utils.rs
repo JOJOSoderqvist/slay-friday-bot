@@ -1,9 +1,9 @@
 use crate::handlers::root_handler::DialogueStore;
 use crate::repo::dialogue_storage::DialogueStorageKey;
+use crate::repo::media_storage_postgres::dto::MediaType;
 use crate::states::State;
 use std::sync::Arc;
 use teloxide::types::{FileId, Message, User, UserId};
-use crate::repo::media_storage_postgres::dto::MediaType;
 
 pub fn get_user_id_from_option(from: &Option<User>) -> Option<UserId> {
     from.as_ref().map(|u| u.id)

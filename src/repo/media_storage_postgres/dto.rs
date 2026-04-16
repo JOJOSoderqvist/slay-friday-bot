@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord, Clone, sqlx::Type)]
 #[serde(rename_all = "lowercase")]
-#[sqlx(type_name="media_type")]
+#[sqlx(type_name = "media_type")]
 pub enum MediaType {
     #[sqlx(rename = "sticker")]
     Sticker,
@@ -52,9 +52,8 @@ impl MediaEntry {
     }
 }
 
-
-
 #[derive(Serialize, Deserialize, Debug, Clone, Ord, Eq, PartialEq, PartialOrd, FromRow)]
+#[allow(unused)]
 pub struct MediaUserUsage {
     pub media_id: Uuid,
     pub user_id: u64,

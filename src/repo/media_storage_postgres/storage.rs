@@ -1,12 +1,10 @@
 use crate::adapter::postgres::PgStore;
 use crate::errors::ApiError;
 use crate::errors::ApiError::{MediaAlreadyExists, MediaNotFound, StorageError};
-use crate::errors::RepoError;
 use crate::errors::RepoError::DBError;
 use crate::handlers::root_handler::MediaStore;
 use crate::repo::media_storage_postgres::dto::MediaEntry;
 use async_trait::async_trait;
-use std::sync::Arc;
 use teloxide::types::UserId;
 use tracing::warn;
 
@@ -86,12 +84,10 @@ impl MediaStore for PGMediaStorage {
         .await
         .map_err(DBError)?;
 
-        println!("{}", res.rows_affected());
-
         if res.rows_affected() != 1 {
             warn!(%entry.id, %user_id, "failed to increment usage count")
         }
-        
+
         tx.commit().await.map_err(DBError)?;
         Ok(Some(entry))
     }
@@ -135,12 +131,12 @@ impl MediaStore for PGMediaStorage {
             r"select m.id, m.name, m.file_id, m.media_type, m.added_by, m.created_at, m.updated_at
                 from media m
                 left join media_user_usage mu on mu.user_id = $1 and mu.media_id = m.id
-                order by mu.usage_count desc;"
+                order by coalesce(mu.usage_count, 0) desc;",
         )
-            .bind(user_id.0 as i64)
-            .fetch_all(&self.storage.pool)
-            .await
-            .map_err(DBError)?;
+        .bind(user_id.0 as i64)
+        .fetch_all(&self.storage.pool)
+        .await
+        .map_err(DBError)?;
 
         Ok(media_entries)
     }

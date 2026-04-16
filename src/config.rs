@@ -1,5 +1,8 @@
 use crate::errors::BotConfigError;
-use crate::errors::BotConfigError::{BotTokenNotFound, DBURLNotFound, GigaChatClientIDNotFound, GigaChatClientSecretNotFound, LogLevelNotFound, MistralTokenNotFound, ParseLogLevelError, ProxyURLNotFound, XAITokenNotFound};
+use crate::errors::BotConfigError::{
+    BotTokenNotFound, DBURLNotFound, GigaChatClientIDNotFound, GigaChatClientSecretNotFound,
+    LogLevelNotFound, MistralTokenNotFound, ParseLogLevelError, ProxyURLNotFound, XAITokenNotFound,
+};
 use dotenvy::dotenv;
 use std::env;
 use std::str::FromStr;

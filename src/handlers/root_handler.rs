@@ -35,14 +35,21 @@ pub trait MessageStore: Send + Sync {
 #[async_trait]
 pub trait MediaStore: Send + Sync {
     async fn add_media_entry(&self, media_entry: MediaEntry) -> Result<(), ApiError>;
-    async fn get_media_entry(&self, media_entry_name: &str, user_id: UserId) -> Result<Option<MediaEntry>, ApiError>;
+    async fn get_media_entry(
+        &self,
+        media_entry_name: &str,
+        user_id: UserId,
+    ) -> Result<Option<MediaEntry>, ApiError>;
     async fn rename_media_entry(
         &self,
         old_entry_name: &str,
         new_entry_name: &str,
     ) -> Result<(), ApiError>;
     async fn list_available_media_entries(&self) -> Result<Vec<MediaEntry>, ApiError>;
-    async fn list_user_specific_media_entries(&self, user_id: UserId) -> Result<Vec<MediaEntry>, ApiError>;
+    async fn list_user_specific_media_entries(
+        &self,
+        user_id: UserId,
+    ) -> Result<Vec<MediaEntry>, ApiError>;
 
     async fn remove_media_entry(&self, media_entry_name: &str) -> Result<bool, ApiError>;
     async fn is_already_created(&self, media_entry_name: &str) -> Result<bool, ApiError>;
