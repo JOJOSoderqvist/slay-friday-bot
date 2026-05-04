@@ -17,10 +17,9 @@ use crate::adapter::postgres::PgStore;
 use crate::commands::Command;
 use crate::config::BotConfig;
 use crate::generation_controller::{ContentRephraser, GenerationController, ModelPool};
-use crate::gigachat_api::api::GigaChatApi;
 use crate::grok_api::api::GrokApi;
 use crate::handlers::root_handler::{
-    ContentGenerator, DialogueStore, MediaStore, MessageStore, handle_command,
+    handle_command, ContentGenerator, DialogueStore, MediaStore, MessageStore,
 };
 use crate::handlers::slay::inline_choice_callback;
 use crate::handlers::state_dispatcher::state_dispatcher;
@@ -28,14 +27,13 @@ use crate::mistral_api::api::MistralApi;
 use crate::repo::dialogue_storage::UserDialogueStorage;
 use crate::repo::media_storage_postgres::storage::PGMediaStorage;
 use crate::repo::message_history_storage::MessageHistoryStorage;
-use crate::utils::get_client_with_proxy;
 use std::process;
 use std::sync::Arc;
 use teloxide::dispatching::UpdateFilterExt;
 use teloxide::prelude::*;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{EnvFilter, fmt};
+use tracing_subscriber::{fmt, EnvFilter};
 use url::Url;
 
 #[tokio::main]
@@ -48,31 +46,31 @@ async fn main() {
         }
     };
 
-    let custom_proxy_client = match get_client_with_proxy(cfg.proxy_url.as_str()) {
-        Ok(c) => c,
-        Err(e) => {
-            eprintln!("error happened configuring custom client: {}", e);
-            process::exit(1);
-        }
-    };
+    // let custom_proxy_client = match get_client_with_proxy(cfg.proxy_url.as_str()) {
+    //     Ok(c) => c,
+    //     Err(e) => {
+    //         eprintln!("error happened configuring custom client: {}", e);
+    //         process::exit(1);
+    //     }
+    // };
 
-    let bot = Bot::with_client(cfg.tg_token, custom_proxy_client.clone());
+    // let bot = Bot::with_client(cfg.tg_token, custom_proxy_client.clone());
 
-    // let bot = Bot::new(cfg.tg_token);
+    let bot = Bot::new(cfg.tg_token);
 
-    let gigachat_generator =
-        match GigaChatApi::new(cfg.gigachat_client_id, cfg.gigachat_client_secret) {
-            Ok(generator) => Arc::new(generator) as Arc<dyn ContentRephraser>,
-            Err(e) => {
-                eprintln!("error happened configuring generator: {}", e);
-                process::exit(1);
-            }
-        };
+    // let gigachat_generator =
+    //     match GigaChatApi::new(cfg.gigachat_client_id, cfg.gigachat_client_secret) {
+    //         Ok(generator) => Arc::new(generator) as Arc<dyn ContentRephraser>,
+    //         Err(e) => {
+    //             eprintln!("error happened configuring generator: {}", e);
+    //             process::exit(1);
+    //         }
+    //     };
 
     let mistral_generator =
         Arc::new(MistralApi::new(cfg.mistral_token)) as Arc<dyn ContentRephraser>;
 
-    let grok_generator = match GrokApi::new(cfg.grok_token, custom_proxy_client.clone()) {
+    let grok_generator = match GrokApi::new(cfg.grok_token) {
         Ok(generator) => Arc::new(generator) as Arc<dyn ContentRephraser>,
         Err(e) => {
             eprintln!("error happened configuring generator: {}", e);
@@ -92,7 +90,7 @@ async fn main() {
 
     let message_history_storage = Arc::new(MessageHistoryStorage::new()) as Arc<dyn MessageStore>;
 
-    let model_pool = ModelPool::from(vec![gigachat_generator, mistral_generator, grok_generator]);
+    let model_pool = ModelPool::from(vec![mistral_generator, grok_generator]);
 
     let generation_controller =
         Arc::new(GenerationController::new(model_pool)) as Arc<dyn ContentGenerator>;

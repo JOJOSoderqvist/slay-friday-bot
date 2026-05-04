@@ -10,9 +10,6 @@ pub enum ApiError {
     #[error("Network or Request error: {0}")]
     RequestError(#[source] reqwest::Error),
 
-    #[error("Failed to parse proxy URL error: {0}")]
-    ProxyURLBuildError(#[source] reqwest::Error),
-
     #[error("Failed to parse URL: {0}")]
     ParseUrlError(#[from] url::ParseError),
 
@@ -119,9 +116,6 @@ pub enum BotConfigError {
 
     #[error("Environment variable 'XAI_API_KEY' not found")]
     XAITokenNotFound(#[source] VarError),
-
-    #[error("Environment variable 'PROXY_URL' not found")]
-    ProxyURLNotFound(#[source] VarError),
 
     #[error("Environment variable 'LOG_LEVEL' not found")]
     LogLevelNotFound(#[source] VarError),

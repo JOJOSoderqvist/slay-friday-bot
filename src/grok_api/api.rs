@@ -17,9 +17,9 @@ pub struct GrokApi {
 }
 
 impl GrokApi {
-    pub fn new(token: String, proxy_client: Client) -> Result<Self, ApiError> {
+    pub fn new(token: String) -> Result<Self, ApiError> {
         Ok(GrokApi {
-            client: proxy_client,
+            client: Client::new(),
             token,
             model: Model::Grok,
         })

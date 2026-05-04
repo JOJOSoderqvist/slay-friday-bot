@@ -18,6 +18,7 @@ use tokio::sync::Mutex;
 use tracing::{error, info, instrument, warn};
 use uuid::Uuid;
 
+#[allow(unused)]
 #[derive(Debug)]
 pub struct GigaChatApi {
     pub server: Client,
@@ -28,6 +29,7 @@ pub struct GigaChatApi {
     model: Model,
 }
 
+#[allow(unused)]
 impl GigaChatApi {
     pub fn new(client_id: String, client_secret: String) -> Result<Self, ApiError> {
         let cert_pem = fs::read("cert.crt")?;
