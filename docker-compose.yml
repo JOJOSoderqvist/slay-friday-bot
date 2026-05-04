@@ -10,27 +10,8 @@ services:
       - slay-network
     restart: unless-stopped
     depends_on:
-      xray-proxy:
-        condition: service_started
       loki:
         condition: service_started
-      media_db:
-        condition: service_healthy
-      media_migrator:
-        condition: service_completed_successfully
-
-  media_migrator:
-    image: ghcr.io/jojosoderqvist/slay-friday-bot:main
-    container_name: media_migrator
-    env_file:
-      - .env
-    command: ["./migrate_media"]
-    volumes:
-      - ./sticker_storage.json:/app/sticker_storage.json:ro
-    networks:
-      - slay-network
-    restart: "no"
-    depends_on:
       media_db:
         condition: service_healthy
 
@@ -55,18 +36,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  xray-proxy:
-    image: teddysun/xray:26.2.6
-    container_name: xray-proxy
-    command: ["xray", "run", "-c", "/etc/xray/config.json"]
-    volumes:
-      - ./xray-config.json:/etc/xray/config.json:ro
-    ports:
-      - "8100:8100"
-    restart: unless-stopped
-    networks:
-      - slay-network
 
   loki:
     image: grafana/loki:3.5.10
