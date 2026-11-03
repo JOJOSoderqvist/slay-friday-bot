@@ -25,7 +25,7 @@ pub enum ApiError {
 
     #[error("Certificate file error: {0}")]
     CertIoError(#[from] std::io::Error),
-    
+
     #[error("Failed to decode response body: {0}")]
     DecodeResponseError(#[source] reqwest::Error),
 
@@ -98,12 +98,6 @@ pub enum BotConfigError {
 
     #[error("Environment variable 'TELOXIDE_TOKEN' not found")]
     BotTokenNotFound(#[source] VarError),
-
-    #[error("Environment variable 'GIGACHAT_CLIENT_ID' not found")]
-    GigaChatClientIDNotFound(#[source] VarError),
-
-    #[error("Environment variable 'GIGACHAT_CLIENT_SECRET' not found")]
-    GigaChatClientSecretNotFound(#[source] VarError),
 
     #[error("Environment variable 'MISTRAL_TOKEN' not found")]
     MistralTokenNotFound(#[source] VarError),
