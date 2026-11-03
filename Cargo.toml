@@ -24,6 +24,6 @@ mockall = "0.14.0"
 strum = { version = "0.27.2", features = ["derive"] }
 dashmap = "6.1.0"
 futures-core = "0.3.31"
-sqlx = { version = "0.8", features = [ "runtime-tokio", "postgres", "migrate", "uuid", "chrono"] }
+sqlx = { version = "0.8", features = [ "runtime-tokio", "tls-native-tls", "postgres", "migrate", "uuid", "chrono"] }
 uuid = { version = "1.23.0", features = ["v4", "serde"] }
 sqlx-core = "0.8.6"

@@ -10,7 +10,7 @@ WORKDIR /app
 COPY . .
 
 # Build your Rust application (adjust as needed for your specific project)
-RUN cargo build --release
+RUN cargo build --release --locked
 
 # Stage 2: Runtime
 FROM debian:stable-slim

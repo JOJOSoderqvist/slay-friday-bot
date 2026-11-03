@@ -2250,6 +2250,7 @@ dependencies = [
  "indexmap 2.11.4",
  "log",
  "memchr",
+ "native-tls",
  "once_cell",
  "percent-encoding",
  "serde",
