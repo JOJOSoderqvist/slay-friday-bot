@@ -10,7 +10,7 @@ WORKDIR /app
 COPY . .
 
 # Build your Rust application (adjust as needed for your specific project)
-RUN cargo build --release
+RUN cargo build --release --locked
 
 # Stage 2: Runtime
 FROM debian:stable-slim
@@ -24,11 +24,8 @@ RUN update-ca-certificates
 
 WORKDIR /app
 
-COPY cert.crt /app/cert.crt
-
 # Copy the compiled executable from the builder stage
 COPY --from=builder /app/target/release/slay_friday_bot /app/slay_friday_bot
-COPY --from=builder /app/target/release/migrate_media /app/migrate_media
 
 # Set the entrypoint for your application
 CMD ["./slay_friday_bot"]

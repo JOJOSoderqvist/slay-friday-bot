@@ -21,17 +21,20 @@ use teloxide::types::ChatId;
 use teloxide::utils::command::BotCommands;
 use tracing::instrument;
 
+#[allow(clippy::double_must_use)]
 #[async_trait]
 pub trait ContentGenerator: Send + Sync {
     async fn generate_text(&self, current_text: &str) -> Result<(String, Model), ApiError>;
 }
 
+#[allow(clippy::double_must_use)]
 #[async_trait]
 pub trait MessageStore: Send + Sync {
     async fn add_message(&self, message: HistoryEntry);
     async fn get_message_info(&self, message: &str) -> Option<Model>;
 }
 
+#[allow(clippy::double_must_use)]
 #[async_trait]
 pub trait MediaStore: Send + Sync {
     async fn add_media_entry(&self, media_entry: MediaEntry) -> Result<(), ApiError>;

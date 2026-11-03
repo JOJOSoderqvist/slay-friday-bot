@@ -5,7 +5,6 @@ mod config;
 mod constants;
 mod errors;
 mod generation_controller;
-mod gigachat_api;
 mod grok_api;
 mod handlers;
 mod mistral_api;
@@ -34,7 +33,6 @@ use teloxide::prelude::*;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{fmt, EnvFilter};
-use url::Url;
 
 #[tokio::main]
 async fn main() {
@@ -46,26 +44,12 @@ async fn main() {
         }
     };
 
-    // let custom_proxy_client = match get_client_with_proxy(cfg.proxy_url.as_str()) {
-    //     Ok(c) => c,
-    //     Err(e) => {
-    //         eprintln!("error happened configuring custom client: {}", e);
-    //         process::exit(1);
-    //     }
-    // };
-
-    // let bot = Bot::with_client(cfg.tg_token, custom_proxy_client.clone());
+    tracing_subscriber::registry()
+        .with(EnvFilter::from_default_env().add_directive(cfg.log_level.into()))
+        .with(fmt::layer().with_ansi(false))
+        .init();
 
     let bot = Bot::new(cfg.tg_token);
-
-    // let gigachat_generator =
-    //     match GigaChatApi::new(cfg.gigachat_client_id, cfg.gigachat_client_secret) {
-    //         Ok(generator) => Arc::new(generator) as Arc<dyn ContentRephraser>,
-    //         Err(e) => {
-    //             eprintln!("error happened configuring generator: {}", e);
-    //             process::exit(1);
-    //         }
-    //     };
 
     let mistral_generator =
         Arc::new(MistralApi::new(cfg.mistral_token)) as Arc<dyn ContentRephraser>;
@@ -94,26 +78,6 @@ async fn main() {
 
     let generation_controller =
         Arc::new(GenerationController::new(model_pool)) as Arc<dyn ContentGenerator>;
-
-    let (loki_layer, task) = match tracing_loki::builder()
-        .label("service_name", "slay-friday-bot")
-        .unwrap()
-        .build_url(Url::parse("http://loki:3100").unwrap())
-    {
-        Ok((layer, task)) => (layer, task),
-        Err(e) => {
-            eprintln!("error happened configuring loki: {}", e);
-            process::exit(1);
-        }
-    };
-
-    let subscriber = tracing_subscriber::registry()
-        .with(EnvFilter::from_default_env().add_directive(cfg.log_level.into()))
-        .with(loki_layer)
-        .with(fmt::layer());
-
-    subscriber.init();
-    tokio::spawn(task);
 
     let command_handler = dptree::entry()
         .filter_command::<Command>()
