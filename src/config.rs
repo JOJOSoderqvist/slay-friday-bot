@@ -1,7 +1,7 @@
 use crate::errors::BotConfigError;
 use crate::errors::BotConfigError::{
-    BotTokenNotFound, DBURLNotFound, GigaChatClientIDNotFound, GigaChatClientSecretNotFound,
-    LogLevelNotFound, MistralTokenNotFound, ParseLogLevelError, XAITokenNotFound,
+    BotTokenNotFound, DBURLNotFound, LogLevelNotFound, MistralTokenNotFound, ParseLogLevelError,
+    XAITokenNotFound,
 };
 use dotenvy::dotenv;
 use std::env;
@@ -10,10 +10,6 @@ use tracing::Level;
 
 pub struct BotConfig {
     pub tg_token: String,
-    #[allow(unused)]
-    pub gigachat_client_id: String,
-    #[allow(unused)]
-    pub gigachat_client_secret: String,
     pub mistral_token: String,
     pub grok_token: String,
     pub log_level: Level,
@@ -24,12 +20,6 @@ impl BotConfig {
     pub fn new() -> Result<Self, BotConfigError> {
         dotenv().ok();
         let tg_token = env::var("TELOXIDE_TOKEN").map_err(BotTokenNotFound)?;
-
-        let gigachat_client_id =
-            env::var("GIGACHAT_CLIENT_ID").map_err(GigaChatClientIDNotFound)?;
-
-        let gigachat_client_secret =
-            env::var("GIGACHAT_CLIENT_SECRET").map_err(GigaChatClientSecretNotFound)?;
 
         let grok_token = env::var("XAI_API_KEY").map_err(XAITokenNotFound)?;
 
@@ -44,8 +34,6 @@ impl BotConfig {
 
         Ok(BotConfig {
             tg_token,
-            gigachat_client_id,
-            gigachat_client_secret,
             mistral_token,
             grok_token,
             log_level,

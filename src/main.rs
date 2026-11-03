@@ -18,7 +18,7 @@ use crate::config::BotConfig;
 use crate::generation_controller::{ContentRephraser, GenerationController, ModelPool};
 use crate::grok_api::api::GrokApi;
 use crate::handlers::root_handler::{
-    handle_command, ContentGenerator, DialogueStore, MediaStore, MessageStore,
+    ContentGenerator, DialogueStore, MediaStore, MessageStore, handle_command,
 };
 use crate::handlers::slay::inline_choice_callback;
 use crate::handlers::state_dispatcher::state_dispatcher;
@@ -32,7 +32,7 @@ use teloxide::dispatching::UpdateFilterExt;
 use teloxide::prelude::*;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt};
 
 #[tokio::main]
 async fn main() {
