@@ -11,6 +11,7 @@ use tracing::instrument;
 
 pub type ModelPool = Vec<Arc<dyn ContentRephraser>>;
 
+#[allow(clippy::double_must_use)]
 #[async_trait]
 #[automock]
 pub trait ContentRephraser: Send + Sync {
