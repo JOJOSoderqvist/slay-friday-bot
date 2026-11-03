@@ -25,13 +25,7 @@ pub enum ApiError {
 
     #[error("Certificate file error: {0}")]
     CertIoError(#[from] std::io::Error),
-
-    #[error("Certificate parsing error: {0}")]
-    CertParseError(#[source] reqwest::Error),
-
-    #[error("Failed to build GigaChatApiClient: {0}")]
-    ApiClientBuildError(#[source] reqwest::Error),
-
+    
     #[error("Failed to decode response body: {0}")]
     DecodeResponseError(#[source] reqwest::Error),
 

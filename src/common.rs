@@ -6,7 +6,6 @@ use tracing::error;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Model {
-    Gigachat,
     Mistral,
     Grok,
 }
@@ -14,7 +13,6 @@ pub enum Model {
 impl Display for Model {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Model::Gigachat => write!(f, "Gigachat"),
             Model::Mistral => write!(f, "Mistral"),
             Model::Grok => write!(f, "Grok"),
         }

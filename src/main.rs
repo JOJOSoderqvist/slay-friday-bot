@@ -5,7 +5,6 @@ mod config;
 mod constants;
 mod errors;
 mod generation_controller;
-mod gigachat_api;
 mod grok_api;
 mod handlers;
 mod mistral_api;
@@ -46,26 +45,7 @@ async fn main() {
         }
     };
 
-    // let custom_proxy_client = match get_client_with_proxy(cfg.proxy_url.as_str()) {
-    //     Ok(c) => c,
-    //     Err(e) => {
-    //         eprintln!("error happened configuring custom client: {}", e);
-    //         process::exit(1);
-    //     }
-    // };
-
-    // let bot = Bot::with_client(cfg.tg_token, custom_proxy_client.clone());
-
     let bot = Bot::new(cfg.tg_token);
-
-    // let gigachat_generator =
-    //     match GigaChatApi::new(cfg.gigachat_client_id, cfg.gigachat_client_secret) {
-    //         Ok(generator) => Arc::new(generator) as Arc<dyn ContentRephraser>,
-    //         Err(e) => {
-    //             eprintln!("error happened configuring generator: {}", e);
-    //             process::exit(1);
-    //         }
-    //     };
 
     let mistral_generator =
         Arc::new(MistralApi::new(cfg.mistral_token)) as Arc<dyn ContentRephraser>;
