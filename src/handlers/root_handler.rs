@@ -1,5 +1,5 @@
 use crate::commands::Command;
-use crate::common::Model;
+use crate::providers::Model;
 use crate::errors::ApiError;
 use crate::handlers::add_media::trigger_add;
 use crate::handlers::delete_media::trigger_delete;

@@ -1,20 +1,22 @@
-use crate::common::Model;
+use crate::providers::Model;
 use sqlx::migrate::MigrateError;
 use std::env::VarError;
 use teloxide::RequestError;
 use teloxide::dispatching::dialogue::InMemStorageError;
 use thiserror::Error;
+use async_openai::error::OpenAIError;
 
 #[derive(Error, Debug)]
 pub enum ApiError {
-    #[error("Network or Request error: {0}")]
-    RequestError(#[source] reqwest::Error),
 
     #[error("Failed to parse URL: {0}")]
     ParseUrlError(#[from] url::ParseError),
 
     #[error("Failed to parse JSON response: {0}")]
     TransformJSONError(#[from] serde_json::Error),
+
+    #[error("OpenAI SDK error happened: {0}")]
+    OpenAISDKError(#[from] OpenAIError),
 
     #[error("API error: Model {model} Status {status}, Body: {body}")]
     ApiStatusError {

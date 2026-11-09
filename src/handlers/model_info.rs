@@ -32,7 +32,7 @@ pub async fn model_info(
         Some(model) => {
             bot.send_message(
                 msg.chat.id,
-                format!("Это сообщение сгенерировано: {}", model),
+                format!("Это сообщение сгенерировано: {}", model.display_name()),
             )
             .await?;
         }
