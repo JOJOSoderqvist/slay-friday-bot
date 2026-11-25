@@ -5,7 +5,8 @@ use crate::errors::ApiError::NoContent;
 use crate::content_rephraser::ContentRephraser;
 use async_openai::Client;
 use async_openai::config::OpenAIConfig;
-use async_openai::types::responses::CreateResponseArgs;
+use async_openai::types::chat::{ChatCompletionRequestMessage, CreateChatCompletionRequestArgs};
+use async_openai::types::responses::{CreateResponseArgs, Reasoning, ReasoningEffort};
 use async_trait::async_trait;
 
 pub struct OpenAIClient {
@@ -24,21 +25,57 @@ impl OpenAIClient {
             model,
         }
     }
+
+    async fn rephrase_with_chat(&self, current_text: &str) -> Result<String, ApiError> {
+        let mut request = CreateChatCompletionRequestArgs::default();
+        request
+            .model(self.model.api_name())
+            .messages(vec![
+                ChatCompletionRequestMessage::System(TEXT_MODIFY_PROMPT.into()),
+                ChatCompletionRequestMessage::User(current_text.into()),
+            ]);
+
+        if self.model.disables_reasoning() {
+            request.reasoning_effort(ReasoningEffort::None);
+        }
+
+        let response = self.client.chat().create(request.build()?).await?;
+        response
+            .choices
+            .into_iter()
+            .next()
+            .and_then(|choice| choice.message.content)
+            .filter(|text| !text.trim().is_empty())
+            .ok_or(NoContent)
+    }
 }
 
 #[async_trait]
 impl ContentRephraser for OpenAIClient {
     async fn rephrase_text(&self, current_text: &str) -> Result<String, ApiError> {
-        let request = CreateResponseArgs::default()
+        if self.model.uses_chat_completions() {
+            return self.rephrase_with_chat(current_text).await;
+        }
+
+        let mut request = CreateResponseArgs::default();
+        request
             .model(self.model.api_name())
             .instructions(TEXT_MODIFY_PROMPT)
-            .input(current_text)
-            .build()?;
+            .input(current_text);
+
+        if self.model.disables_reasoning() {
+            request.reasoning(Reasoning {
+                effort: Some(ReasoningEffort::None),
+                ..Default::default()
+            });
+        }
 
         let response = self.client
             .responses()
-            .create(request)
+            .create(request.build()?)
             .await?;
+
+        eprintln!("{:?}", response);
 
         match response.output_text() {
             Some(text) => Ok(text),

@@ -50,20 +50,19 @@ async fn main() {
 
     let bot = Bot::new(cfg.tg_token);
 
+    let gemini_gen = Arc::new(OpenAIClient::new(
+        Model::GEMINI_MODEL,
+        cfg.gemini_token.clone(),
+    )) as Arc<dyn ContentRephraser>;
 
-    let mistral_gen = Arc::new(OpenAIClient::new(
-        Model::MISTRAL_MODEL,
-        cfg.mistral_token.clone(), // ???
+    let gemini_2_5_gen = Arc::new(OpenAIClient::new(
+        Model::GEMINI_2_5_FLASH_LITE_MODEL,
+        cfg.gemini_token,
     )) as Arc<dyn ContentRephraser>;
 
     let grok_gen = Arc::new(OpenAIClient::new(
         Model::GROK_MODEL,
         cfg.grok_token,
-    )) as Arc<dyn ContentRephraser>;
-
-    let glm_gen = Arc::new(OpenAIClient::new(
-        Model::GLM_MODEL,
-        cfg.mistral_token,
     )) as Arc<dyn ContentRephraser>;
 
 
@@ -79,7 +78,7 @@ async fn main() {
 
     let message_history_storage = Arc::new(MessageHistoryStorage::new()) as Arc<dyn MessageStore>;
 
-    let model_pool = ModelPool::from(vec![mistral_gen, grok_gen, glm_gen]);
+    let model_pool = ModelPool::from(vec![gemini_gen, gemini_2_5_gen, grok_gen]);
 
     let generation_controller =
         Arc::new(GenerationController::new(model_pool)) as Arc<dyn ContentGenerator>;

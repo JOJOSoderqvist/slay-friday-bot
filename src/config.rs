@@ -1,8 +1,5 @@
 use crate::errors::BotConfigError;
-use crate::errors::BotConfigError::{
-    BotTokenNotFound, DBURLNotFound, LogLevelNotFound, MistralTokenNotFound, ParseLogLevelError,
-    XAITokenNotFound,
-};
+use crate::errors::BotConfigError::{BotTokenNotFound, DBURLNotFound, GeminiTokenNotFound, LogLevelNotFound, ParseLogLevelError, XAITokenNotFound};
 use dotenvy::dotenv;
 use std::env;
 use std::str::FromStr;
@@ -10,8 +7,8 @@ use tracing::Level;
 
 pub struct BotConfig {
     pub tg_token: String,
-    pub mistral_token: String,
     pub grok_token: String,
+    pub gemini_token: String,
     pub log_level: Level,
     pub db_conn_str: String,
 }
@@ -23,7 +20,7 @@ impl BotConfig {
 
         let grok_token = env::var("XAI_API_KEY").map_err(XAITokenNotFound)?;
 
-        let mistral_token = env::var("MISTRAL_TOKEN").map_err(MistralTokenNotFound)?;
+        let gemini_token = env::var("GEMINI_API_KEY").map_err(GeminiTokenNotFound)?;
 
         let log_level_str = env::var("LOG_LEVEL").map_err(LogLevelNotFound)?;
 
@@ -34,8 +31,8 @@ impl BotConfig {
 
         Ok(BotConfig {
             tg_token,
-            mistral_token,
             grok_token,
+            gemini_token,
             log_level,
             db_conn_str,
         })

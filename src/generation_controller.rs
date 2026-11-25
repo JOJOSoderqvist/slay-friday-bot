@@ -40,7 +40,7 @@ impl ContentGenerator for GenerationController {
                 }
 
                 Err(err) => {
-                    error!(error = %err, "failed to generated content, trying next model");
+                    error!(model = sh.get_model_name().api_name(), error = %err, "failed to generate content, trying next model");
                     continue;
                 }
             }
