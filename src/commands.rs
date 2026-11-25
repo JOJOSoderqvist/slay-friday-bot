@@ -1,3 +1,8 @@
+#![allow(
+    unreachable_code,
+    reason = "Teloxide generates an error branch for infallible String parsing"
+)]
+
 use crate::errors::ApiError;
 use crate::errors::ApiError::CommandConversionError;
 use std::fmt::{Display, Formatter};
