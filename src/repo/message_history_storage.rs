@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use async_trait::async_trait;
 use tokio::sync::RwLock;
 
-use crate::common::Model;
+use crate::providers::Model;
 use crate::handlers::root_handler::MessageStore;
 
 const HISTORY_STORAGE_SIZE: usize = 20;

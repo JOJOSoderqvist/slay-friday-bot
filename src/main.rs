@@ -1,13 +1,12 @@
 mod adapter;
 mod commands;
-mod common;
+mod providers;
 mod config;
 mod constants;
+mod content_rephraser;
 mod errors;
 mod generation_controller;
-mod grok_api;
 mod handlers;
-mod mistral_api;
 mod repo;
 mod states;
 mod utils;
@@ -16,13 +15,11 @@ use crate::adapter::postgres::PgStore;
 use crate::commands::Command;
 use crate::config::BotConfig;
 use crate::generation_controller::{ContentRephraser, GenerationController, ModelPool};
-use crate::grok_api::api::GrokApi;
 use crate::handlers::root_handler::{
     ContentGenerator, DialogueStore, MediaStore, MessageStore, handle_command,
 };
 use crate::handlers::slay::inline_choice_callback;
 use crate::handlers::state_dispatcher::state_dispatcher;
-use crate::mistral_api::api::MistralApi;
 use crate::repo::dialogue_storage::UserDialogueStorage;
 use crate::repo::media_storage_postgres::storage::PGMediaStorage;
 use crate::repo::message_history_storage::MessageHistoryStorage;
@@ -33,6 +30,8 @@ use teloxide::prelude::*;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, fmt};
+use crate::adapter::generation::open_ai_sdk::OpenAIClient;
+use crate::providers::Model;
 
 #[tokio::main]
 async fn main() {
@@ -51,16 +50,21 @@ async fn main() {
 
     let bot = Bot::new(cfg.tg_token);
 
-    let mistral_generator =
-        Arc::new(MistralApi::new(cfg.mistral_token)) as Arc<dyn ContentRephraser>;
+    let gemini_gen = Arc::new(OpenAIClient::new(
+        Model::GEMINI_MODEL,
+        cfg.gemini_token.clone(),
+    )) as Arc<dyn ContentRephraser>;
 
-    let grok_generator = match GrokApi::new(cfg.grok_token) {
-        Ok(generator) => Arc::new(generator) as Arc<dyn ContentRephraser>,
-        Err(e) => {
-            eprintln!("error happened configuring generator: {}", e);
-            process::exit(1);
-        }
-    };
+    let gemini_2_5_gen = Arc::new(OpenAIClient::new(
+        Model::GEMINI_2_5_FLASH_LITE_MODEL,
+        cfg.gemini_token,
+    )) as Arc<dyn ContentRephraser>;
+
+    let grok_gen = Arc::new(OpenAIClient::new(
+        Model::GROK_MODEL,
+        cfg.grok_token,
+    )) as Arc<dyn ContentRephraser>;
+
 
     let pg_pool = match PgStore::new(cfg.db_conn_str.as_str()).await {
         Ok(s) => s,
@@ -74,7 +78,7 @@ async fn main() {
 
     let message_history_storage = Arc::new(MessageHistoryStorage::new()) as Arc<dyn MessageStore>;
 
-    let model_pool = ModelPool::from(vec![mistral_generator, grok_generator]);
+    let model_pool = ModelPool::from(vec![gemini_gen, gemini_2_5_gen, grok_gen]);
 
     let generation_controller =
         Arc::new(GenerationController::new(model_pool)) as Arc<dyn ContentGenerator>;
