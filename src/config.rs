@@ -1,8 +1,12 @@
 use crate::errors::BotConfigError;
-use crate::errors::BotConfigError::{BotTokenNotFound, DBURLNotFound, FailedToParseWebHookURL, GeminiTokenNotFound, LogLevelNotFound, ParseLogLevelError, WebHookURLNotFound, XAITokenNotFound};
+use crate::errors::BotConfigError::{
+    BotTokenNotFound, DBURLNotFound, FailedToParseWebHookURL, GeminiTokenNotFound, InvalidPort,
+    LogLevelNotFound, ParseLogLevelError, ReadPortError, WebHookURLNotFound, XAITokenNotFound,
+};
 use dotenvy::dotenv;
 use std::env;
 use std::net::SocketAddr;
+use std::num::NonZeroU16;
 use std::str::FromStr;
 use teloxide::update_listeners::webhooks::Options;
 use tracing::Level;
@@ -33,7 +37,12 @@ impl BotConfig {
 
         let db_conn_str = env::var("DATABASE_URL").map_err(DBURLNotFound)?;
 
-        let addr: SocketAddr = ([0, 0, 0, 0], 8080).into();
+        let port = match env::var("PORT") {
+            Ok(port) => port.parse::<NonZeroU16>().map_err(InvalidPort)?.get(),
+            Err(env::VarError::NotPresent) => 8080,
+            Err(err) => return Err(ReadPortError(err)),
+        };
+        let addr: SocketAddr = ([0, 0, 0, 0], port).into();
         let url = env::var("WEBHOOK_APP_URL").map_err(WebHookURLNotFound)?;
         let url = Url::parse(&url).map_err(FailedToParseWebHookURL)?;
 

@@ -1,5 +1,6 @@
 use sqlx::migrate::MigrateError;
 use std::env::VarError;
+use std::num::ParseIntError;
 use teloxide::RequestError;
 use teloxide::dispatching::dialogue::InMemStorageError;
 use thiserror::Error;
@@ -102,6 +103,12 @@ pub enum BotConfigError {
 
     #[error("Environment variable 'DATABASE_URL' not found")]
     DBURLNotFound(#[source] VarError),
+
+    #[error("Failed to read PORT")]
+    ReadPortError(#[source] VarError),
+
+    #[error("PORT must be an integer between 1 and 65535")]
+    InvalidPort(#[source] ParseIntError),
 
     #[error("URL for webhook is not found")]
     WebHookURLNotFound(#[source] VarError),
