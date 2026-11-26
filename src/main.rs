@@ -27,6 +27,7 @@ use std::process;
 use std::sync::Arc;
 use teloxide::dispatching::UpdateFilterExt;
 use teloxide::prelude::*;
+use teloxide::update_listeners::webhooks;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, fmt};
@@ -49,6 +50,11 @@ async fn main() {
         .init();
 
     let bot = Bot::new(cfg.tg_token);
+
+
+    let listener = webhooks::axum(bot.clone(), cfg.webhook_options)
+        .await
+        .expect("Failed to start webhook listener");
 
     let gemini_gen = Arc::new(OpenAIClient::new(
         Model::GEMINI_MODEL,
@@ -109,6 +115,6 @@ async fn main() {
         .enable_ctrlc_handler()
         .default_handler(|_upd| async {})
         .build()
-        .dispatch()
+        .dispatch_with_listener(listener, LoggingErrorHandler::with_custom_text("Error from webhook listener"))
         .await;
 }

@@ -2,6 +2,8 @@ services:
   slayfridaybot:
     image: ghcr.io/jojosoderqvist/slay-friday-bot:main
     container_name: slayfridaybot
+    ports:
+      - "8080:8080"
     env_file:
       - .env
     environment:

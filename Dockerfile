@@ -27,5 +27,6 @@ WORKDIR /app
 # Copy the compiled executable from the builder stage
 COPY --from=builder /app/target/release/slay_friday_bot /app/slay_friday_bot
 
+EXPOSE 8080
 # Set the entrypoint for your application
 CMD ["./slay_friday_bot"]
