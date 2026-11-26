@@ -1,9 +1,12 @@
 use crate::errors::BotConfigError;
-use crate::errors::BotConfigError::{BotTokenNotFound, DBURLNotFound, GeminiTokenNotFound, LogLevelNotFound, ParseLogLevelError, XAITokenNotFound};
+use crate::errors::BotConfigError::{BotTokenNotFound, DBURLNotFound, FailedToParseWebHookURL, GeminiTokenNotFound, LogLevelNotFound, ParseLogLevelError, WebHookURLNotFound, XAITokenNotFound};
 use dotenvy::dotenv;
 use std::env;
+use std::net::SocketAddr;
 use std::str::FromStr;
+use teloxide::update_listeners::webhooks::Options;
 use tracing::Level;
+use url::Url;
 
 pub struct BotConfig {
     pub tg_token: String,
@@ -11,6 +14,7 @@ pub struct BotConfig {
     pub gemini_token: String,
     pub log_level: Level,
     pub db_conn_str: String,
+    pub webhook_options: Options,
 }
 
 impl BotConfig {
@@ -29,12 +33,19 @@ impl BotConfig {
 
         let db_conn_str = env::var("DATABASE_URL").map_err(DBURLNotFound)?;
 
+        let addr: SocketAddr = ([0, 0, 0, 0], 8080).into();
+        let url = env::var("WEBHOOK_APP_URL").map_err(WebHookURLNotFound)?;
+        let url = Url::parse(&url).map_err(FailedToParseWebHookURL)?;
+
+        let webhook_options = Options::new(addr, url);
+
         Ok(BotConfig {
             tg_token,
             grok_token,
             gemini_token,
             log_level,
             db_conn_str,
+            webhook_options,
         })
     }
 }

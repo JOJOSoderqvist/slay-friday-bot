@@ -4,6 +4,7 @@ use teloxide::RequestError;
 use teloxide::dispatching::dialogue::InMemStorageError;
 use thiserror::Error;
 use async_openai::error::OpenAIError;
+use url::ParseError;
 
 #[derive(Error, Debug)]
 pub enum ApiError {
@@ -101,4 +102,10 @@ pub enum BotConfigError {
 
     #[error("Environment variable 'DATABASE_URL' not found")]
     DBURLNotFound(#[source] VarError),
+
+    #[error("URL for webhook is not found")]
+    WebHookURLNotFound(#[source] VarError),
+
+    #[error("Failed to parse webhook url: {0}")]
+    FailedToParseWebHookURL(#[source] ParseError),
 }
